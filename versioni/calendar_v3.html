@@ -1,0 +1,2921 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Registro presenze &amp; ferie</title>
+  <style>
+    /* ------------------------------------------------------------------
+       Registro presenze & ferie, v2
+       Idea: un cartellino. Colonne rigate, tratteggio sui giorni non
+       lavorativi, timbri colorati per stato, e a fondo pagina la striscia
+       annuale 12 x 31 che mostra l'anno intero in un colpo d'occhio.
+       ------------------------------------------------------------------ */
+    :root {
+      color-scheme: light;
+      --font-display: Bahnschrift, "DIN Alternate", "Franklin Gothic Medium", "Segoe UI Semibold", system-ui, sans-serif;
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+      --bg: #e7eae8;
+      --panel: #f8f9f7;
+      --panel-2: #edf0ee;
+      --empty: #dde3e2;
+      --ink: #13202a;
+      --muted: #4f5e6a;
+      --rule: #c4cdd0;
+      --rule-strong: #78868f;
+      --hatch: rgba(19, 32, 42, 0.11);
+      --focus: #1a4fd6;
+      --danger: #a71d1d;
+      --warn: #7d4700;
+      --warn-line: #b87100;
+      --primary: #16324f;
+      --primary-ink: #ffffff;
+      --toast-bg: #13202a;
+      --toast-ink: #f3f6f7;
+
+      --c-work: #2a5bd7;     --bg-work: #e3eafc;     --fg-work: #1a2d6e;
+      --c-smart: #0e8a96;    --bg-smart: #d9f1f3;    --fg-smart: #094850;
+      --c-ferie: #bd7600;    --bg-ferie: #fcefd0;    --fg-ferie: #653f00;
+      --c-permesso: #8a4fd0; --bg-permesso: #eee1fa; --fg-permesso: #48236f;
+      --c-malattia: #d13a3a; --bg-malattia: #fbe0e0; --fg-malattia: #741919;
+      --c-festivo: #1d9b68;  --bg-festivo: #d8f2e5;  --fg-festivo: #0b5336;
+      --c-chiusura: #5b6b7a; --bg-chiusura: #e2e7ec; --fg-chiusura: #26313b;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0c1115;
+      --panel: #151c22;
+      --panel-2: #1c252c;
+      --empty: #232e36;
+      --ink: #e8eef2;
+      --muted: #9fadb8;
+      --rule: #29353e;
+      --rule-strong: #5f7382;
+      --hatch: rgba(232, 238, 242, 0.09);
+      --focus: #8fb0ff;
+      --danger: #ff8d8d;
+      --warn: #f5c36a;
+      --warn-line: #e0a030;
+      --primary: #dbe7f3;
+      --primary-ink: #0f1a24;
+      --toast-bg: #e8eef2;
+      --toast-ink: #0f1a24;
+
+      --c-work: #6c93ff;     --bg-work: #1a2745;     --fg-work: #cddaff;
+      --c-smart: #34c6d4;    --bg-smart: #10333a;    --fg-smart: #bdeef3;
+      --c-ferie: #f0b030;    --bg-ferie: #3a2b0c;    --fg-ferie: #fde2a8;
+      --c-permesso: #b58af0; --bg-permesso: #2c1f45; --fg-permesso: #e6d6fb;
+      --c-malattia: #f06a6a; --bg-malattia: #451c1c; --fg-malattia: #fcd2d2;
+      --c-festivo: #3fcf94;  --bg-festivo: #11382a;  --fg-festivo: #c3f3de;
+      --c-chiusura: #9db0c2; --bg-chiusura: #212c36; --fg-chiusura: #d6e2ee;
+    }
+
+    .st-work     { --st: var(--c-work);     --st-bg: var(--bg-work);     --st-fg: var(--fg-work); }
+    .st-smart    { --st: var(--c-smart);    --st-bg: var(--bg-smart);    --st-fg: var(--fg-smart); }
+    .st-ferie    { --st: var(--c-ferie);    --st-bg: var(--bg-ferie);    --st-fg: var(--fg-ferie); }
+    .st-permesso { --st: var(--c-permesso); --st-bg: var(--bg-permesso); --st-fg: var(--fg-permesso); }
+    .st-malattia { --st: var(--c-malattia); --st-bg: var(--bg-malattia); --st-fg: var(--fg-malattia); }
+    .st-festivo  { --st: var(--c-festivo);  --st-bg: var(--bg-festivo);  --st-fg: var(--fg-festivo); }
+    .st-chiusura { --st: var(--c-chiusura); --st-bg: var(--bg-chiusura); --st-fg: var(--fg-chiusura); }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font: 400 0.9375rem/1.45 var(--font-ui);
+      min-height: 100vh;
+      padding: clamp(0.75rem, 2.5vw, 1.75rem);
+    }
+    .app { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; }
+
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+
+    .skip {
+      position: absolute; left: -999px; top: 0.5rem;
+      background: var(--primary); color: var(--primary-ink);
+      padding: 0.5rem 0.9rem; border-radius: 6px; z-index: 300;
+    }
+    .skip:focus { left: 0.5rem; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap;
+    }
+
+    /* ---------- Intestazione ---------- */
+    .top {
+      display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem;
+      align-items: flex-end; justify-content: space-between;
+      padding-bottom: 0.9rem; border-bottom: 2px solid var(--ink);
+    }
+    .top h1 {
+      font: 600 1.7rem/1.1 var(--font-display);
+      font-stretch: 88%;
+      letter-spacing: -0.01em;
+    }
+    .save-state { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+      min-height: 2.4rem; padding: 0.4rem 0.85rem;
+      background: var(--panel); color: var(--ink);
+      border: 1px solid var(--rule-strong); border-radius: 8px;
+      font-size: 0.875rem; font-weight: 600; white-space: nowrap;
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+    .btn:hover:not(:disabled) { background: var(--panel-2); border-color: var(--ink); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.icon { width: 2.4rem; padding: 0; }
+    .btn.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
+    .btn.primary:hover:not(:disabled) { background: var(--primary); filter: brightness(1.12); }
+    .btn.danger { color: var(--danger); border-color: var(--danger); }
+    .btn svg { width: 1.1rem; height: 1.1rem; flex: none; }
+    .btn .caret { width: 0.8rem; height: 0.8rem; opacity: 0.7; }
+
+    .menu { position: relative; }
+    .menu-pop {
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
+      min-width: 16.5rem; padding: 0.3rem;
+      background: var(--panel); border: 1px solid var(--rule-strong); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      display: grid;
+    }
+    .menu-pop button {
+      text-align: left; background: none; border: 0; border-radius: 6px;
+      padding: 0.55rem 0.7rem; font-size: 0.875rem;
+    }
+    .menu-pop button:hover, .menu-pop button:focus-visible { background: var(--panel-2); }
+    .menu-pop hr { border: 0; border-top: 1px solid var(--rule); margin: 0.3rem 0.2rem; }
+    .menu-pop .destructive { color: var(--danger); }
+
+    .banner {
+      padding: 0.7rem 0.95rem; border: 1px solid var(--warn-line); border-left-width: 5px;
+      border-radius: 8px; background: var(--panel); color: var(--ink); font-size: 0.9rem;
+    }
+
+    /* ---------- Vassoio dei timbri ---------- */
+    .tray-wrap { display: grid; gap: 0.45rem; }
+    .tray { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .stamp {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      min-height: 2.4rem; padding: 0.3rem 0.7rem 0.3rem 0.65rem;
+      background: var(--panel); border: 1px solid var(--rule); border-left: 5px solid var(--st, var(--ink));
+      border-radius: 6px; font-size: 0.875rem; font-weight: 600;
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+    .stamp:hover { border-color: var(--st, var(--ink)); }
+    .stamp[aria-pressed="true"] {
+      background: var(--st-bg, var(--panel-2)); color: var(--st-fg, var(--ink));
+      border-color: var(--st, var(--ink)); box-shadow: inset 0 0 0 1px var(--st, var(--ink));
+    }
+    .stamp.st-cycle { --st: var(--ink); --st-bg: var(--panel-2); --st-fg: var(--ink); }
+    .stamp kbd {
+      font: 600 0.7rem/1 var(--font-display); color: var(--muted);
+      border: 1px solid var(--rule-strong); border-radius: 4px; padding: 0.15rem 0.3rem;
+    }
+    .stamp[aria-pressed="true"] kbd { color: inherit; border-color: currentColor; }
+    .hint { font-size: 0.8rem; color: var(--muted); max-width: 70ch; }
+
+    /* ---------- Pannelli ---------- */
+    .layout {
+      display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.1rem; align-items: start;
+    }
+    .panel {
+      background: var(--panel); border: 1px solid var(--rule); border-radius: 12px;
+      padding: clamp(0.8rem, 2vw, 1.3rem);
+    }
+
+    /* ---------- Calendario ---------- */
+    .cal-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .cal-head h2 {
+      font: 600 2rem/1.05 var(--font-display); font-stretch: 88%;
+      letter-spacing: -0.015em; text-transform: capitalize;
+    }
+    .nav { display: flex; gap: 0.4rem; }
+
+    .wk, .days {
+      display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.4rem;
+    }
+    .wk {
+      margin-bottom: 0.4rem; text-align: center;
+      font: 600 0.78rem var(--font-display); color: var(--muted); letter-spacing: 0.02em;
+    }
+
+    .day {
+      position: relative; display: flex; flex-direction: column; justify-content: space-between;
+      min-width: 0; height: clamp(3.7rem, 8.2vw, 5.7rem);
+      padding: 0.35rem 0.3rem 0.35rem 0.6rem; text-align: left;
+      background: var(--panel); color: var(--ink);
+      border: 1px solid var(--rule); border-radius: 6px;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color 0.12s, background-color 0.12s;
+    }
+    .day:hover { border-color: var(--rule-strong); }
+    .day.pad { visibility: hidden; pointer-events: none; }
+    .day.off {
+      color: var(--muted);
+      background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--hatch) 5px 6px);
+    }
+    .day.has {
+      color: var(--st-fg); background-color: var(--st-bg);
+      border-color: var(--st);
+      border-color: color-mix(in srgb, var(--st) 55%, transparent);
+      box-shadow: inset 4px 0 0 var(--st);
+    }
+    .day.has:hover { border-color: var(--st); }
+    .day.gap { border-style: dashed; border-color: var(--warn-line); }
+    .day.uncounted { background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--hatch) 5px 6px); }
+    .day:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; z-index: 2; }
+
+    .d-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.25rem; }
+    .d-num {
+      font: 600 1.05rem/1.3 var(--font-display); font-variant-numeric: tabular-nums;
+      padding: 0 0.1rem; border-radius: 999px; min-width: 1.4em; text-align: center;
+    }
+    .day.today .d-num { background: var(--ink); color: var(--panel); padding: 0 0.4em; }
+    .d-meta {
+      font: 600 0.72rem/1.5 var(--font-display); font-variant-numeric: tabular-nums;
+      padding-right: 0.7rem;
+    }
+    .d-tags { display: grid; gap: 2px; min-width: 0; }
+    .tagline {
+      font-size: 0.72rem; font-weight: 600; line-height: 1.2; color: var(--st-fg);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tagline[hidden] { display: none; }
+    .tagline .short { display: none; }
+    .day.mixed { background-color: var(--panel); color: var(--ink); border-color: var(--rule-strong); box-shadow: none; }
+    .day.mixed::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+      border-radius: 5px 0 0 5px; background: linear-gradient(to bottom, var(--c1) 50%, var(--c2) 50%);
+    }
+    .day.mixed .tagline { background: var(--st-bg); border-left: 3px solid var(--st); padding: 0 0.25rem; border-radius: 3px; }
+    .day.out {
+      opacity: 0.55; background: transparent; border-style: dotted; cursor: not-allowed; color: var(--muted);
+    }
+    .day.out:hover { border-color: var(--rule); }
+    .day.readonly { cursor: default; }
+    .day.has-note::after {
+      content: ""; position: absolute; top: 0; right: 0;
+      border-style: solid; border-width: 0 0.85rem 0.85rem 0;
+      border-color: transparent var(--ink) transparent transparent;
+      border-top-right-radius: 5px;
+    }
+
+    /* ---------- Barra laterale ---------- */
+    .side { padding: 0; overflow: hidden; }
+    .side > section { padding: clamp(0.9rem, 2vw, 1.2rem); }
+    .side > section + section { border-top: 1px solid var(--rule); }
+    .side h3 { font: 600 1.15rem/1.2 var(--font-display); font-stretch: 90%; margin-bottom: 0.8rem; }
+
+    .bal + .bal { margin-top: 1rem; }
+    .bal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .bal-name { font-weight: 600; }
+    .bal-res { color: var(--muted); font-size: 0.85rem; }
+    .bal-res b { font: 600 1.7rem/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink); margin-right: 0.15rem; }
+    .bal.over .bal-res b, .bal.over .bal-res { color: var(--danger); }
+    .meter { display: flex; height: 0.65rem; background: var(--empty); border-radius: 3px; overflow: hidden; }
+    .meter i { display: block; height: 100%; }
+    .meter .done { background: var(--st); }
+    .meter .plan { background: repeating-linear-gradient(135deg, var(--st) 0 3px, transparent 3px 6px); }
+    .bal.over .meter .done { background: var(--danger); }
+    .bal-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+
+    details.quota { margin-top: 1rem; border-top: 1px dashed var(--rule-strong); padding-top: 0.7rem; }
+    details.quota summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.7rem; }
+    .q-grid label { display: grid; gap: 0.25rem; font-size: 0.78rem; color: var(--muted); }
+
+    input[type="number"], input[type="text"], input[type="date"], select, textarea {
+      width: 100%; background: var(--panel); border: 1px solid var(--rule-strong);
+      border-radius: 6px; padding: 0.45rem 0.55rem; min-height: 2.3rem;
+    }
+    input[type="number"] { font-variant-numeric: tabular-nums; }
+    textarea { resize: vertical; }
+
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+      padding: 0.28rem 0; font-size: 0.9rem;
+    }
+    .stat-row + .stat-row { border-top: 1px solid var(--rule); }
+    .stat-label { display: flex; align-items: center; gap: 0.5rem; }
+    .stat-val { font: 600 0.95rem var(--font-display); font-variant-numeric: tabular-nums; }
+    .stat-row.zero { color: var(--muted); }
+    .stat-row.zero .stat-val { font-weight: 400; }
+    .swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; background: var(--st); flex: none; }
+    .stat-note { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .stat-gap {
+      display: block; width: 100%; text-align: left; margin: 0.2rem 0 0.6rem;
+      padding: 0.45rem 0.6rem; border: 1px dashed var(--warn-line); border-radius: 6px;
+      background: none; color: var(--warn); font-size: 0.85rem; font-weight: 600;
+    }
+    .stat-gap:hover { background: var(--panel-2); }
+    .cap-meter { height: 0.4rem; margin: 0 0 0.35rem; }
+    .stat-row.over .stat-val { color: var(--danger); }
+
+    /* ---------- Cartellino annuale ---------- */
+    .year-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1.2rem; margin-bottom: 0.9rem; }
+    .year-head h2 { font: 600 1.35rem/1.2 var(--font-display); font-stretch: 90%; }
+    .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.78rem; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .legend .sw { width: 0.8rem; height: 0.8rem; border-radius: 2px; background: var(--st); }
+    .legend .sw.off { background: var(--empty) repeating-linear-gradient(135deg, transparent 0 3px, var(--hatch) 3px 4px); border: 1px solid var(--rule); }
+    .legend .sw.out { background: transparent; border: 1px dotted var(--rule-strong); }
+    .legend .sw.gap { background: transparent; border: 1px dashed var(--warn-line); }
+
+    .ym-row {
+      display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); gap: 0.5rem;
+      align-items: center; padding: 2px 0.25rem; border-radius: 4px;
+    }
+    .ym-row.cur { background: var(--panel-2); }
+    .ym-m {
+      background: none; border: 0; text-align: left; padding: 0.1rem 0;
+      font: 600 0.82rem var(--font-display); color: var(--muted);
+    }
+    .ym-row.cur .ym-m { color: var(--ink); }
+    .ym-m:hover { color: var(--ink); text-decoration: underline; }
+    .ym-days, .ym-ticks { display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 2px; }
+    .ym-ticks span {
+      font: 400 0.64rem/1 var(--font-display); color: var(--muted);
+      text-align: center; white-space: nowrap; overflow: visible; min-height: 0.7rem;
+    }
+    .ym-d { height: 1.05rem; border-radius: 2px; background: var(--empty); position: relative; cursor: pointer; }
+    .ym-d.void { background: transparent; cursor: default; }
+    .ym-d.off { background: var(--empty) repeating-linear-gradient(135deg, transparent 0 3px, var(--hatch) 3px 4px); }
+    .ym-d.has { background: var(--st); }
+    .ym-d.gap { background: transparent; box-shadow: inset 0 0 0 1px var(--warn-line); }
+    .ym-d.mix { background: linear-gradient(135deg, var(--c1) 50%, var(--c2) 50%); }
+    .ym-d.out { background: transparent; box-shadow: inset 0 0 0 1px var(--rule); cursor: default; }
+    .ym-d.today { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 1; }
+
+    .year-totals {
+      display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+      margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--rule);
+    }
+    .yt { display: flex; align-items: baseline; gap: 0.45rem; font-size: 0.88rem; }
+    .yt b { font: 600 1rem var(--font-display); font-variant-numeric: tabular-nums; }
+    .yt .swatch { align-self: center; }
+
+    footer {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between;
+      font-size: 0.8rem; color: var(--muted); padding-top: 0.2rem;
+    }
+    footer .warn { color: var(--warn); font-weight: 600; }
+    footer details summary { cursor: pointer; }
+    .keys { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.8rem; margin-top: 0.5rem; max-width: 34rem; }
+    .keys kbd { font: 600 0.72rem var(--font-display); border: 1px solid var(--rule-strong); border-radius: 4px; padding: 0.05rem 0.35rem; justify-self: start; }
+    .linklike { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; font: inherit; }
+
+    .print-only { display: none; }
+
+    /* ---------- Finestre di dialogo ---------- */
+    dialog {
+      border: 1px solid var(--rule-strong); border-radius: 14px; padding: 0;
+      background: var(--panel); color: var(--ink);
+      width: min(30rem, calc(100% - 1.5rem)); max-height: calc(100vh - 1.5rem);
+      margin: auto; overflow: auto;
+    }
+    dialog::backdrop { background: rgba(6, 10, 14, 0.62); }
+    dialog form, dialog .dlg-body { padding: 1.25rem; display: grid; gap: 0.9rem; }
+    dialog h3 { font: 600 1.35rem/1.15 var(--font-display); font-stretch: 90%; }
+    dialog .sub { color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }
+    .field { display: grid; gap: 0.3rem; }
+    .field > label, .field > .lbl, fieldset legend { font-size: 0.85rem; font-weight: 600; }
+    .field .help { font-size: 0.78rem; color: var(--muted); }
+    .err { color: var(--danger); font-size: 0.85rem; font-weight: 600; }
+    fieldset { border: 0; display: grid; gap: 0.3rem; }
+    fieldset > legend { margin-bottom: 0.35rem; }
+    .checks { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .checks label {
+      display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;
+      border: 1px solid var(--rule-strong); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer;
+    }
+    .checks input { accent-color: var(--primary); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; align-items: start; }
+    .row3 { display: grid; grid-template-columns: 5.5rem 1fr 1fr; gap: 0.6rem; }
+    .dlg-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+    .dlg-actions .push { margin-right: auto; }
+
+    #toasts {
+      position: fixed; left: 50%; bottom: 1.1rem; transform: translateX(-50%);
+      z-index: 400; width: min(34rem, calc(100% - 1.5rem)); pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      background: var(--toast-bg); color: var(--toast-ink);
+      border-radius: 10px; padding: 0.65rem 0.8rem 0.65rem 1rem; font-size: 0.9rem;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+      animation: toast-in 0.18s ease-out;
+    }
+    .toast button {
+      background: none; border: 1px solid currentColor; color: inherit;
+      border-radius: 6px; padding: 0.25rem 0.7rem; font-weight: 600;
+    }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ---------- Riepilogo del mese sotto il calendario ---------- */
+    .main-col { display: grid; gap: 1.1rem; min-width: 0; }
+    .monthpanel h3 { font: 600 1.15rem/1.2 var(--font-display); font-stretch: 90%; margin-bottom: 0.8rem; }
+    #monthStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.2rem; align-items: start; }
+    #monthStats { grid-auto-flow: row dense; }
+    #monthStats > .stat-note, #monthStats > .stat-gap { grid-column: 1 / -1; }
+    #monthStats > .cap-meter { grid-column: 2; margin: -0.1rem 0 0.2rem; }
+    #monthStats > .stat-row { border-top: 0 !important; border-bottom: 1px solid var(--rule); }
+
+    /* ---------- Rapporti di lavoro, maturazione, storico ---------- */
+    .top > div:first-child { min-width: 0; max-width: 100%; }
+    .jobbar { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-top: 0.6rem; max-width: 100%; }
+    .jobbar select { width: auto; min-width: min(15rem, 100%); max-width: 100%; font-weight: 600; text-overflow: ellipsis; }
+    .job-note, .viewnote {
+      font-size: 0.82rem; color: var(--warn); margin: -0.4rem 0 0.8rem;
+      border-left: 3px solid var(--warn-line); padding-left: 0.6rem;
+    }
+    .viewnote { margin: 0; }
+    .accrual { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--rule-strong); display: grid; gap: 0.1rem; }
+    .accrual h4 { font: 600 0.95rem var(--font-display); margin-bottom: 0.3rem; }
+    .accrual .btn { margin-top: 0.5rem; justify-self: start; }
+    .accrual .fine { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+    .jobtag { font-size: 0.82rem; color: var(--muted); font-weight: 400; }
+    .hist { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .hist th, .hist td { text-align: right; padding: 0.3rem 0.25rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+    .hist th:first-child, .hist td:first-child { text-align: left; }
+    .hist th { font-weight: 600; color: var(--muted); font-size: 0.76rem; }
+    .hist tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--ink); }
+    .hist .sub { display: block; font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+    .jobbox { border: 1px solid var(--rule-strong); border-radius: 10px; padding: 0.8rem; display: grid; gap: 0.6rem; }
+    .jobbox .row3j { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 0.6rem; align-items: start; }
+    .jobbox .field label { font-size: 0.78rem; display: grid; gap: 0.3rem; font-weight: 600; }
+    .jobbox .jsum { font-size: 0.8rem; color: var(--muted); }
+    .jobbox .field label.inline { display: flex; align-items: center; gap: 0.4rem; font-weight: 400; font-size: 0.82rem; margin-top: 0.1rem; }
+    .jobbox .field label.inline input { width: auto; min-height: 0; accent-color: var(--primary); }
+    .jobbox input[type="date"]:disabled { opacity: 0.45; }
+    .jobbox .jtop { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .layer-grid { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; gap: 0.6rem; align-items: end; }
+    .accr-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.4rem; }
+    .accr-fields label { display: grid; gap: 0.25rem; font-size: 0.78rem; color: var(--muted); }
+    #jobsDlg { width: min(40rem, calc(100% - 1.5rem)); }
+    #setDlg { width: min(34rem, calc(100% - 1.5rem)); }
+    .menu-pop button:disabled { opacity: 0.45; cursor: not-allowed; }
+    @media (max-width: 640px) {
+      #monthStats { grid-template-columns: minmax(0, 1fr); }
+      #monthStats > .cap-meter { grid-column: 1; }
+      .jobbox .row3j { grid-template-columns: 1fr 1fr; }
+      .jobbox .row3j > :first-child { grid-column: 1 / -1; }
+      .jobbar select { min-width: 0; flex: 1 1 10rem; }
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .top h1 { font-size: 1.4rem; }
+      .cal-head h2 { font-size: 1.55rem; }
+      .days, .wk { gap: 0.22rem; }
+      .day { padding: 0.25rem 0.2rem 0.25rem 0.4rem; }
+      .d-meta { display: none; }
+      .d-num { font-size: 0.95rem; min-width: 1.3em; }
+      .day.today .d-num { padding: 0 0.3em; }
+      .tagline .long { display: none; }
+      .tagline .short { display: inline; }
+      .tagline { font-size: 0.66rem; }
+      .day.mixed .tagline { padding: 0 0.12rem; border-left-width: 2px; }
+      .day.has-note::after { border-width: 0 0.65rem 0.65rem 0; }
+      .ym-row { grid-template-columns: 2.1rem minmax(0, 1fr); gap: 0.3rem; }
+      .ym-d { height: 0.9rem; }
+      .row3 { grid-template-columns: 1fr 1fr; }
+      .row3 > :first-child { grid-column: 1 / -1; }
+    }
+    @media (hover: none) {
+      .stamp kbd { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    /* ---------- Stampa ---------- */
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      body { background: #fff; padding: 0; font-size: 11px; }
+      .actions, .tray-wrap, .nav, .menu, #toasts, footer, .year, details.quota, .banner, .skip, .stat-gap { display: none !important; }
+      .top { padding-bottom: 0.4rem; }
+      .layout { grid-template-columns: minmax(0, 1fr) 15rem; }
+      .day { height: 3.4rem; break-inside: avoid; }
+      .panel { border-color: #888; }
+      .print-only { display: block; font-size: 0.75rem; color: #444; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#daysGrid">Vai al calendario</a>
+
+  <div class="app">
+    <header class="top">
+      <div>
+        <h1>Registro presenze &amp; ferie</h1>
+        <div class="jobbar">
+          <label class="sr-only" for="jobSel">Datore di lavoro</label>
+          <select id="jobSel"></select>
+          <button type="button" class="btn" id="jobsBtn">Rapporti di lavoro</button>
+        </div>
+        <p class="save-state" id="saveState" role="status">Caricamento…</p>
+        <p class="print-only" id="printStamp"></p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn icon" id="undoBtn" aria-label="Annulla" title="Annulla (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button type="button" class="btn icon" id="redoBtn" aria-label="Ripeti" title="Ripeti (Ctrl+Maiusc+Z)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+        </button>
+
+        <div class="menu" id="fillMenu">
+          <button type="button" class="btn has-txt" aria-haspopup="menu" aria-expanded="false">
+            <span class="txt">Compila mese</span>
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span class="sr-only">Compila mese</span>
+          </button>
+          <div class="menu-pop" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="fill-work">Riempi i giorni vuoti con Lavoro</button>
+            <button type="button" role="menuitem" data-act="fill-smart">Riempi i giorni vuoti con Smart Working</button>
+            <hr />
+            <button type="button" role="menuitem" class="destructive" data-act="clear-month">Svuota il mese…</button>
+          </div>
+        </div>
+
+        <div class="menu" id="dataMenu">
+          <button type="button" class="btn has-txt" aria-haspopup="menu" aria-expanded="false">
+            <span class="txt">Dati</span>
+            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <span class="sr-only">Dati</span>
+          </button>
+          <div class="menu-pop" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="export-year" id="yearItem">Esporta anno completo (CSV)</button>
+            <button type="button" role="menuitem" data-act="export-csv" id="csvItem">Esporta solo giorni compilati (CSV)</button>
+            <button type="button" role="menuitem" data-act="export-history">Esporta storico di tutti i datori (CSV)</button>
+            <hr />
+            <button type="button" role="menuitem" data-act="export-json-job" id="jsonJobItem">Salva il JSON di questo datore</button>
+            <button type="button" role="menuitem" data-act="export-json-each">Salva un JSON per ogni datore</button>
+            <button type="button" role="menuitem" data-act="export-json">Salva backup completo (JSON)</button>
+            <button type="button" role="menuitem" data-act="import-json">Ripristina da file JSON…</button>
+            <hr />
+            <button type="button" role="menuitem" data-act="print">Stampa o salva in PDF</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn icon" id="settingsBtn" aria-label="Impostazioni" title="Impostazioni">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <button type="button" class="btn icon" id="themeBtn" aria-label="Tema" title="Tema"></button>
+      </div>
+    </header>
+
+    <div class="banner" id="banner" role="alert" hidden></div>
+
+    <div class="tray-wrap" id="trayWrap">
+      <div class="tray" id="tray" role="group" aria-label="Timbro attivo"></div>
+      <p class="hint" id="hint"></p>
+    </div>
+    <p class="viewnote" id="viewNote" hidden></p>
+
+    <div class="layout">
+      <div class="main-col">
+      <section class="panel cal" aria-labelledby="monthTitle">
+        <div class="cal-head">
+          <h2 id="monthTitle" aria-live="polite">Mese</h2>
+          <div class="nav">
+            <button type="button" class="btn icon" id="prevBtn" aria-label="Mese precedente" title="Mese precedente (Pag↑)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button type="button" class="btn" id="todayBtn">Oggi</button>
+            <button type="button" class="btn icon" id="nextBtn" aria-label="Mese successivo" title="Mese successivo (Pag↓)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="job-note" id="jobNote" hidden></p>
+        <div class="wk" aria-hidden="true">
+          <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
+        </div>
+        <div class="days" id="daysGrid" role="group" aria-label="Giorni del mese"></div>
+      </section>
+
+      <section class="panel monthpanel" aria-labelledby="monthStatsTitle">
+        <h3 id="monthStatsTitle">Mese</h3>
+        <div id="monthStats"></div>
+      </section>
+      </div>
+
+      <aside class="panel side" aria-label="Saldi e storico">
+        <section>
+          <h3 id="balTitle">Saldi</h3>
+          <div id="balances"></div>
+          <div class="accrual" id="accrual" hidden></div>
+          <details class="quota">
+            <summary>Modifica monte e riporto dell'anno</summary>
+            <div class="q-grid">
+              <label>Monte ferie (giorni)<input type="number" id="qFerie" min="0" step="0.5" inputmode="decimal" /></label>
+              <label>Riporto ferie (giorni)<input type="number" id="qCarryFerie" min="0" step="0.5" inputmode="decimal" /></label>
+              <label>Monte permessi/ROL (ore)<input type="number" id="qPerm" min="0" step="0.25" inputmode="decimal" /></label>
+              <label>Riporto permessi/ROL (ore)<input type="number" id="qCarryPerm" min="0" step="0.25" inputmode="decimal" /></label>
+            </div>
+          </details>
+        </section>
+
+        <section id="histSec" hidden>
+          <h3>Storico complessivo</h3>
+          <div id="histStats"></div>
+        </section>
+
+      </aside>
+    </div>
+
+    <section class="panel year" aria-labelledby="yearTitle">
+      <div class="year-head">
+        <h2 id="yearTitle">Cartellino</h2>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div id="yearMap" role="group" aria-label="Cartellino annuale: un mese per riga, un giorno per colonna"></div>
+      <div class="year-totals" id="yearStats" role="group" aria-label="Totali dell'anno"></div>
+    </section>
+
+    <footer>
+      <div>
+        <span id="backupInfo"></span>
+        <p style="margin-top:0.2rem">I dati restano solo in questo browser: se svuoti la cache del sito li perdi.</p>
+      </div>
+      <details>
+        <summary>Scorciatoie da tastiera</summary>
+        <div class="keys">
+          <kbd>1 – 6</kbd><span>Scegli il timbro (Lavoro, Smart Working, Ferie, Permesso, Malattia, Festivo)</span>
+          <kbd>C</kbd><span>Timbro "Cicla stati"</span>
+          <kbd>Frecce</kbd><span>Muoviti tra i giorni (Pag↑ e Pag↓ cambiano mese)</span>
+          <kbd>Invio</kbd><span>Applica il timbro al giorno selezionato</span>
+          <kbd>E</kbd><span>Dettagli del giorno: stato, ore, note, intervallo</span>
+          <kbd>Canc</kbd><span>Svuota il giorno</span>
+          <kbd>T</kbd><span>Vai a oggi</span>
+          <kbd>Ctrl+Z</kbd><span>Annulla (Ctrl+Maiusc+Z per ripetere)</span>
+        </div>
+      </details>
+    </footer>
+  </div>
+
+  <!-- Dettagli giorno -->
+  <dialog id="dayDlg" aria-labelledby="dTitle">
+    <form id="dayForm" method="dialog" novalidate>
+      <div>
+        <h3 id="dTitle">Giorno</h3>
+        <p class="sub" id="dSub"></p>
+      </div>
+      <div class="layer-grid">
+        <div class="field">
+          <label for="dPres">Presenza</label>
+          <select id="dPres"></select>
+        </div>
+        <div class="field">
+          <label for="dPresH">Ore</label>
+          <input type="number" id="dPresH" min="0" max="24" step="0.25" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label for="dAbs">Assenza o tipo di giorno</label>
+          <select id="dAbs"></select>
+        </div>
+        <div class="field">
+          <label for="dAbsH">Ore</label>
+          <input type="number" id="dAbsH" min="0" max="24" step="0.25" inputmode="decimal" />
+        </div>
+      </div>
+      <p class="help" id="dHelp" style="font-size:0.78rem;color:var(--muted);margin-top:-0.4rem">Un giorno può avere sia lavoro o smart working sia ferie o permesso: le ore si compensano da sole, ma puoi cambiarle.</p>
+      <div class="field">
+        <label for="dNote">Note</label>
+        <textarea id="dNote" rows="3" maxlength="500" placeholder="Es. visita medica, straordinario concordato…"></textarea>
+      </div>
+      <div class="field">
+        <label for="dUntil">Applica lo stesso giorno fino al (facoltativo)</label>
+        <input type="date" id="dUntil" />
+        <span class="help">Per le ferie di più giorni. Weekend, festivi e giorni fuori dal rapporto vengono saltati.</span>
+      </div>
+      <p class="err" id="dErr" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" class="btn danger push" id="dClear">Svuota giorno</button>
+        <button type="button" class="btn" id="dCancel">Annulla</button>
+        <button type="submit" class="btn primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Impostazioni del datore di lavoro selezionato -->
+  <dialog id="setDlg" aria-labelledby="sTitle">
+    <form id="setForm" method="dialog" novalidate>
+      <div>
+        <h3 id="sTitle">Impostazioni</h3>
+        <p class="sub" id="sSub"></p>
+      </div>
+      <div class="field">
+        <label for="sStd">Ore di una giornata intera</label>
+        <input type="number" id="sStd" min="1" max="24" step="0.25" inputmode="decimal" />
+        <span class="help">Serve per contare le mezze giornate di ferie (4 ore su 8 = 0,5 giorni).</span>
+      </div>
+      <fieldset class="field">
+        <legend>Giorni in cui lavori</legend>
+        <div class="checks" id="sDays"></div>
+        <span class="help">Ferie, permessi, malattia e chiusure contano solo in questi giorni, esclusi i festivi.</span>
+      </fieldset>
+      <div class="row2">
+        <div class="field">
+          <label for="sCap">Limite mensile di smart working</label>
+          <input type="number" id="sCap" min="0" max="31" step="1" inputmode="numeric" />
+          <span class="help">In giorni. 0 = nessun limite.</span>
+        </div>
+        <div class="field">
+          <label for="sClosure">Una chiusura aziendale scala da</label>
+          <select id="sClosure">
+            <option value="none">Niente (è già pagata)</option>
+            <option value="ferie">Ferie</option>
+            <option value="rol">Permessi/ROL</option>
+          </select>
+        </div>
+      </div>
+      <fieldset class="field">
+        <legend>Come maturano ferie e permessi</legend>
+        <div class="field">
+          <label for="sFerMode">Ferie</label>
+          <select id="sFerMode">
+            <option value="fixed">Monte annuale fisso</option>
+            <option value="worked">Maturano con le ore lavorate</option>
+          </select>
+          <div class="accr-fields" id="sFerWorked" hidden>
+            <label>Giorni di ferie<input type="number" id="sFerPer" min="0" step="0.01" inputmode="decimal" /></label>
+            <label>Ogni (ore lavorate)<input type="number" id="sFerEvery" min="1" step="0.01" inputmode="decimal" /></label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="sPerMode">Permessi/ROL</label>
+          <select id="sPerMode">
+            <option value="fixed">Monte annuale fisso</option>
+            <option value="worked">Maturano con le ore lavorate</option>
+          </select>
+          <div class="accr-fields" id="sPerWorked" hidden>
+            <label>Ore di permesso<input type="number" id="sPerPer" min="0" step="0.01" inputmode="decimal" /></label>
+            <label>Ogni (ore lavorate)<input type="number" id="sPerEvery" min="1" step="0.01" inputmode="decimal" /></label>
+          </div>
+        </div>
+        <span class="help">Prendi i valori dal contratto (CCNL) o dal cedolino. Con la maturazione a ore il saldo viene dalle ore svolte fino a oggi, più il riporto.</span>
+      </fieldset>
+      <fieldset class="field">
+        <legend>Santo patrono (festivo locale, per tutti i datori)</legend>
+        <div class="row3">
+          <div><label class="sr-only" for="sPatDay">Giorno</label><input type="number" id="sPatDay" min="1" max="31" placeholder="Giorno" /></div>
+          <div><label class="sr-only" for="sPatMonth">Mese</label><select id="sPatMonth"></select></div>
+          <div><label class="sr-only" for="sPatName">Nome</label><input type="text" id="sPatName" maxlength="40" placeholder="Nome (es. S. Ambrogio)" /></div>
+        </div>
+        <span class="help">Le festività nazionali, Pasqua e Pasquetta sono già inserite.</span>
+      </fieldset>
+      <p class="err" id="sErr" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" class="btn danger push" id="sWipe">Elimina tutti i dati…</button>
+        <button type="button" class="btn" id="sCancel">Annulla</button>
+        <button type="submit" class="btn primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Rapporti di lavoro -->
+  <dialog id="jobsDlg" aria-labelledby="jTitle">
+    <form id="jobsForm" method="dialog" novalidate>
+      <div>
+        <h3 id="jTitle">Rapporti di lavoro</h3>
+        <p class="sub">Un rapporto per ogni datore di lavoro, con data di inizio e di fine. I giorni fuori dal rapporto non si segnano e non contano.</p>
+      </div>
+      <div id="jobsList" style="display:grid;gap:0.8rem"></div>
+      <div><button type="button" class="btn" id="jobAdd">Aggiungi un rapporto</button></div>
+      <p class="err" id="jErr" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" class="btn" id="jCancel">Annulla</button>
+        <button type="submit" class="btn primary">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <!-- Scelta generica -->
+  <dialog id="choiceDlg" aria-labelledby="cTitle">
+    <div class="dlg-body">
+      <h3 id="cTitle"></h3>
+      <p id="cText"></p>
+      <div class="dlg-actions" id="cBtns"></div>
+    </div>
+  </dialog>
+
+  <input type="file" id="importFile" accept=".json,application/json" multiple hidden />
+  <div id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    /* =====================================================================
+       Costanti e utilità
+       ===================================================================== */
+    const KEY = 'presenze_tracker_v3';
+    const KEY_V2 = 'presenze_tracker_v2';
+    const KEY_V1 = 'presenze_tracker_v1';
+    const DEFAULT_START = '2026-10-12';      // inizio del primo rapporto (modificabile da "Rapporti di lavoro")
+    const ALL = '__all__';                   // vista "tutti i datori di lavoro, sommati"
+
+    const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+    const MONTHS_SHORT = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+    const WEEKDAYS = ['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'];
+    const WD_SHORT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+    const STATUS = {
+      work:     { label: 'Lavoro',             short: 'Lav.',   cell: 'Lavoro',   mix: 'Lavoro',   layer: 'presence' },
+      smart:    { label: 'Smart Working',      short: 'SW',     cell: 'Smart Working', mix: 'Smart', layer: 'presence' },
+      ferie:    { label: 'Ferie',              short: 'Ferie',  cell: 'Ferie',    mix: 'Ferie',    layer: 'absence' },
+      permesso: { label: 'Permesso/ROL',       short: 'ROL',    cell: 'Permesso', mix: 'ROL',      layer: 'absence' },
+      malattia: { label: 'Malattia',           short: 'Mal.',   cell: 'Malattia', mix: 'Malattia', layer: 'absence' },
+      chiusura: { label: 'Chiusura aziendale', short: 'Chius.', cell: 'Chiusura', mix: 'Chiusura', layer: 'absence' },
+      festivo:  { label: 'Festivo',            short: 'Fest.',  cell: 'Festivo',  mix: 'Festivo',  layer: 'absence' }
+    };
+    const ORDER = Object.keys(STATUS);
+    const PRESENCE = ['work', 'smart'];
+    const ABSENCE = ['ferie', 'permesso', 'malattia', 'chiusura', 'festivo'];
+
+    const nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
+    const round2 = n => Math.round(n * 100) / 100;
+    const fmt = n => nf.format(round2(n));
+
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    const pad = n => String(n).padStart(2, '0');
+    const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+    const keyOfDate = dt => keyOf(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+    const addDays = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
+    const wdIdx = dt => (dt.getDay() + 6) % 7;                    // 0 = lunedì … 6 = domenica
+    const capFirst = s => s.charAt(0).toUpperCase() + s.slice(1);
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDate = k => { const p = parseKey(k); return p ? `${pad(p.d)}/${pad(p.m + 1)}/${p.y}` : ''; };
+    const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'datore';
+    const newId = () => 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const clone = o => (o == null ? o : JSON.parse(JSON.stringify(o)));
+
+    function parseKey(k) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof k === 'string' ? k : '');
+      if (!m) return null;
+      const y = +m[1], mo = +m[2] - 1, d = +m[3];
+      if (y < 1970 || y > 2200) return null;
+      const date = new Date(y, mo, d);
+      if (date.getFullYear() !== y || date.getMonth() !== mo || date.getDate() !== d) return null;
+      return { y, m: mo, d, date };
+    }
+    const validKey = k => (parseKey(k) ? k : null);
+
+    /* Pasqua (algoritmo di Meeus/Jones/Butcher) */
+    function easter(y) {
+      const a = y % 19, b = Math.floor(y / 100), c = y % 100;
+      const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451), t = h + l - 7 * m + 114;
+      return { m: Math.floor(t / 31) - 1, d: (t % 31) + 1 };
+    }
+
+    /* =====================================================================
+       Modello dati (v3): più rapporti di lavoro, ogni giorno ha una
+       "presenza" (lavoro o smart) e/o una "assenza" (ferie, permesso, …)
+       ===================================================================== */
+    function defaultCfg() {
+      return {
+        stdHours: 8,
+        workdays: [true, true, true, true, true, false, false],
+        smartCap: 0,
+        closureDeduct: 'none',               // 'none' | 'ferie' | 'rol'
+        accrual: {
+          ferie:    { mode: 'fixed', per: 0, every: 173 },   // 'worked': "per" giorni ogni "every" ore lavorate
+          permessi: { mode: 'fixed', per: 0, every: 173 }    // 'worked': "per" ore ogni "every" ore lavorate
+        }
+      };
+    }
+    function defaultJob(name, start) {
+      return { id: newId(), name, start: start || null, end: null, cfg: defaultCfg(), days: {}, years: {}, snaps: {} };
+    }
+    function defaultDb() {
+      const j = defaultJob('Datore di lavoro', DEFAULT_START);
+      return { version: 3, jobs: [j], activeJob: j.id, lastJob: j.id, settings: { theme: 'auto', patron: { month: 0, day: 1, name: '' } }, meta: { lastBackup: null } };
+    }
+
+    const defHoursFor = (status, std) => (status === 'permesso' ? Math.min(2, std) : status === 'festivo' ? 0 : std);
+
+    function normCfg(c) {
+      const d = defaultCfg();
+      if (!c || typeof c !== 'object') return d;
+      let std = Number(c.stdHours); if (!(std >= 1 && std <= 24)) std = d.stdHours;
+      let wd = Array.isArray(c.workdays) && c.workdays.length === 7 ? c.workdays.map(Boolean) : d.workdays;
+      if (!wd.some(Boolean)) wd = d.workdays;
+      let cap = Math.round(Number(c.smartCap)); if (!(cap >= 0 && cap <= 31)) cap = 0;
+      const cd = ['none', 'ferie', 'rol'].includes(c.closureDeduct) ? c.closureDeduct : 'none';
+      const acc = (a, dflt) => {
+        a = a || {};
+        const per = Number(a.per), every = Number(a.every);
+        return { mode: a.mode === 'worked' ? 'worked' : 'fixed', per: per >= 0 && per <= 1000 ? per : dflt.per, every: every > 0 && every <= 100000 ? every : dflt.every };
+      };
+      const ac = c.accrual || {};
+      return { stdHours: std, workdays: wd, smartCap: cap, closureDeduct: cd, accrual: { ferie: acc(ac.ferie, d.accrual.ferie), permessi: acc(ac.permessi, d.accrual.permessi) } };
+    }
+
+    function normGlobal(s) {
+      const d = defaultDb().settings;
+      if (!s || typeof s !== 'object') return d;
+      const theme = ['auto', 'light', 'dark'].includes(s.theme) ? s.theme : d.theme;
+      const p = s.patron || {};
+      let month = Math.trunc(Number(p.month)) || 0, day = Math.trunc(Number(p.day)) || 1;
+      if (!(month >= 1 && month <= 12 && day >= 1 && day <= daysIn(2024, month - 1))) { month = 0; day = 1; }
+      return { theme, patron: { month, day, name: String(p.name || '').slice(0, 40) } };
+    }
+
+    function normYear(c) {
+      const n = (v, dflt) => { const x = Number(v); return Number.isFinite(x) && x >= 0 && x <= 1000 ? x : dflt; };
+      c = c || {};
+      return { ferie: n(c.ferie, 26), permessi: n(c.permessi, 32), carryFerie: n(c.carryFerie, 0), carryPermessi: n(c.carryPermessi, 0) };
+    }
+
+    function normPart(p, allowed, std) {
+      if (!p || typeof p !== 'object' || !allowed.includes(p.status)) return null;
+      let h = p.hours == null ? NaN : Number(p.hours);
+      if (!(h >= 0 && h <= 24)) h = defHoursFor(p.status, std);
+      return { status: p.status, hours: p.status === 'festivo' ? 0 : round2(h) };
+    }
+
+    function normEntry(k, v, std) {
+      if (!parseKey(k) || !v || typeof v !== 'object') return null;
+      let presence = null, absence = null;
+      if ('presence' in v || 'absence' in v) {                         // formato v3
+        presence = normPart(v.presence, PRESENCE, std);
+        absence = normPart(v.absence, ABSENCE, std);
+      } else if (STATUS[v.status]) {                                   // formato v1/v2: uno stato per giorno
+        if (STATUS[v.status].layer === 'presence') presence = normPart(v, PRESENCE, std);
+        else absence = normPart(v, ABSENCE, std);
+      }
+      if (absence && absence.status === 'festivo') presence = null;
+      if (!presence && !absence) return null;
+      return { presence, absence, note: typeof v.note === 'string' ? v.note.trim().slice(0, 500) : '' };
+    }
+
+    function normJob(j) {
+      if (!j || typeof j !== 'object') return null;
+      const c = normCfg(j.cfg);
+      const job = {
+        id: typeof j.id === 'string' && j.id ? j.id.slice(0, 40) : newId(),
+        name: String(j.name || '').trim().slice(0, 60) || 'Datore di lavoro',
+        start: validKey(j.start), end: validKey(j.end), cfg: c, days: {}, years: {}, snaps: {}
+      };
+      if (job.start && job.end && job.start > job.end) job.end = null;
+      if (j.days && typeof j.days === 'object' && !Array.isArray(j.days)) {
+        for (const [k, v] of Object.entries(j.days)) { const e = normEntry(k, v, c.stdHours); if (e) job.days[k] = e; }
+      }
+      if (j.years && typeof j.years === 'object') for (const [y, q] of Object.entries(j.years)) if (/^\d{4}$/.test(y)) job.years[y] = normYear(q);
+      if (j.snaps && typeof j.snaps === 'object') {
+        for (const [y, sn] of Object.entries(j.snaps)) {
+          if (/^\d{4}$/.test(y) && sn && validKey(sn.date)) job.snaps[y] = { date: sn.date, ferie: Number(sn.ferie) || 0, permessi: Number(sn.permessi) || 0 };
+        }
+      }
+      return job;
+    }
+
+    // Accetta v3 (tutto o un solo datore), v2 e v1. Restituisce { db, legacy, kind }.
+    function normalizeAny(o) {
+      if (!o || typeof o !== 'object') throw new Error('Formato non valido');
+      const db = defaultDb();
+      if (o.kind === 'job' && o.job) {                                  // file di un solo datore di lavoro
+        const j = normJob(o.job);
+        if (!j) throw new Error('Datore non valido');
+        db.jobs = [j]; db.activeJob = db.lastJob = j.id;
+        db.settings = normGlobal(o.settings);
+        return { db, legacy: false, kind: 'job' };
+      }
+      if (Array.isArray(o.jobs)) {                                      // backup completo v3
+        const jobs = o.jobs.slice(0, 30).map(normJob).filter(Boolean);
+        if (!jobs.length) throw new Error('Nessun rapporto di lavoro');
+        const seen = new Set();
+        jobs.forEach(j => { while (seen.has(j.id)) j.id = newId(); seen.add(j.id); });
+        db.jobs = jobs;
+        db.activeJob = o.activeJob === ALL || jobs.some(j => j.id === o.activeJob) ? o.activeJob : jobs[0].id;
+        db.lastJob = jobs.some(j => j.id === o.lastJob) ? o.lastJob : jobs[0].id;
+        db.settings = normGlobal(o.settings);
+        if (o.meta && typeof o.meta.lastBackup === 'string' && !isNaN(Date.parse(o.meta.lastBackup))) db.meta.lastBackup = o.meta.lastBackup;
+        return { db, legacy: false, kind: 'all' };
+      }
+      if (o.days && typeof o.days === 'object' && !Array.isArray(o.days)) {   // v1 / v2: un solo rapporto implicito
+        const s = o.settings || {};
+        const c = normCfg(s);
+        const j = defaultJob('Datore di lavoro', null);
+        j.cfg = c;
+        for (const [k, v] of Object.entries(o.days)) { const e = normEntry(k, v, c.stdHours); if (e) j.days[k] = e; }
+        const keys = Object.keys(j.days).sort();
+        j.start = (!keys.length || keys[0] >= DEFAULT_START) ? DEFAULT_START : null;   // se ci sono giorni più vecchi non metto limiti
+        if (o.years && typeof o.years === 'object') {
+          for (const [y, q] of Object.entries(o.years)) if (/^\d{4}$/.test(y)) j.years[y] = normYear(q);
+        } else if (o.quotas && typeof o.quotas === 'object') {
+          const q = normYear({ ferie: o.quotas.ferie, permessi: o.quotas.permessi });
+          const ys = new Set(keys.map(k => k.slice(0, 4)));
+          ys.add(String(new Date().getFullYear()));
+          ys.forEach(y => { j.years[y] = { ...q }; });
+        }
+        db.jobs = [j]; db.activeJob = db.lastJob = j.id;
+        db.settings = normGlobal({ theme: s.theme, patron: s.patron });
+        if (o.meta && typeof o.meta.lastBackup === 'string' && !isNaN(Date.parse(o.meta.lastBackup))) db.meta.lastBackup = o.meta.lastBackup;
+        return { db, legacy: true, kind: 'legacy' };
+      }
+      throw new Error('Struttura non riconosciuta');
+    }
+
+    /* =====================================================================
+       Persistenza
+       ===================================================================== */
+    let store;
+    let active = null, override = null;
+    let storageOK = true;
+    let startNotice = null;
+
+    const job = () => override || active;
+    const cfg = () => job().cfg;
+    const days = () => job().days;
+    const years = () => job().years;
+    const isAll = () => store.activeJob === ALL;
+    function withJob(j, fn) { const p = override; override = j; try { return fn(); } finally { override = p; } }
+    function syncActive() {
+      const id = store.activeJob === ALL ? store.lastJob : store.activeJob;
+      active = store.jobs.find(j => j.id === id) || store.jobs[0];
+      store.lastJob = active.id;
+      if (store.activeJob !== ALL) store.activeJob = active.id;
+    }
+
+    function testStorage() {
+      try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; } catch (e) { return false; }
+    }
+    function loadStore() {
+      storageOK = testStorage();
+      if (storageOK) {
+        let raw = null;
+        try { raw = localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+        if (raw) {
+          try { return normalizeAny(JSON.parse(raw)).db; }
+          catch (e) {
+            try { localStorage.setItem(KEY + '_corrotto', raw); } catch (_) { /* ignore */ }
+            startNotice = 'I dati salvati risultavano danneggiati. Ne ho tenuto una copia grezza e sono ripartito da zero: se hai un backup JSON, ripristinalo da Dati.';
+            return defaultDb();
+          }
+        }
+        for (const k of [KEY_V2, KEY_V1]) {
+          let old = null;
+          try { old = localStorage.getItem(k); } catch (e) { /* ignore */ }
+          if (old) {
+            try { const r = normalizeAny(JSON.parse(old)); startNotice = 'Ho importato i dati della versione precedente.'; return r.db; }
+            catch (e) { /* illeggibile: provo la successiva */ }
+          }
+        }
+      }
+      return defaultDb();
+    }
+    function persist() {
+      if (!storageOK) { renderSaveState(); return false; }
+      try { localStorage.setItem(KEY, JSON.stringify(store)); renderSaveState(); return true; }
+      catch (e) { storageOK = false; renderSaveState(); return false; }
+    }
+
+    /* =====================================================================
+       Calendario: festivi, giorni lavorativi, periodo del rapporto
+       ===================================================================== */
+    const holCache = new Map();
+    function holidays(y) {
+      if (holCache.has(y)) return holCache.get(y);
+      const map = new Map();
+      const add = (m, d, name) => { const k = `${pad(m + 1)}-${pad(d)}`; if (!map.has(k)) map.set(k, name); };
+      add(0, 1, 'Capodanno'); add(0, 6, 'Epifania'); add(3, 25, 'Liberazione');
+      add(4, 1, 'Festa del lavoro'); add(5, 2, 'Festa della Repubblica'); add(7, 15, 'Ferragosto');
+      add(10, 1, 'Ognissanti'); add(11, 8, 'Immacolata'); add(11, 25, 'Natale'); add(11, 26, 'Santo Stefano');
+      const e = easter(y);
+      add(e.m, e.d, 'Pasqua');
+      const pq = addDays(new Date(y, e.m, e.d), 1);
+      add(pq.getMonth(), pq.getDate(), 'Lunedì dell’Angelo');
+      const p = store.settings.patron;
+      if (p.month >= 1) add(p.month - 1, p.day, p.name || 'Santo patrono');
+      holCache.set(y, map);
+      return map;
+    }
+
+    // Info su un giorno per il rapporto di lavoro corrente
+    function infoOf(y, m, d) {
+      const date = new Date(y, m, d);
+      const key = keyOf(y, m, d);
+      const wd = wdIdx(date);
+      const holiday = holidays(y).get(`${pad(m + 1)}-${pad(d)}`) || null;
+      const j = job();
+      const inJob = (!j.start || key >= j.start) && (!j.end || key <= j.end);
+      const on = j.cfg.workdays[wd];                                    // giorno della settimana in cui lavori
+      return { y, m, d, date, key, wd, holiday, on, inJob, out: !inJob, workday: inJob && on && !holiday };
+    }
+    function infoOfKey(k) { const p = parseKey(k); return p ? infoOf(p.y, p.m, p.d) : null; }
+
+    function effective(key, info) {
+      if (info.out) return null;
+      const e = days()[key];
+      if (e) return e;
+      if (info.holiday) return { presence: null, absence: { status: 'festivo', hours: 0 }, note: '', auto: true };
+      return null;
+    }
+
+    function mergeEntries(es) {
+      const lay = k => {
+        const by = {};
+        for (const e of es) { const p = e[k]; if (p) by[p.status] = (by[p.status] || 0) + p.hours; }
+        const ks = Object.keys(by);
+        if (!ks.length) return null;
+        ks.sort((a, b) => by[b] - by[a]);
+        return { status: ks[0], hours: round2(by[ks[0]]) };
+      };
+      return { presence: lay('presence'), absence: lay('absence'), note: es.map(e => e.note).filter(Boolean).join(' / ') };
+    }
+
+    // Tutto ciò che serve per disegnare un giorno, sia per un datore sia nella vista somma
+    function dayView(key) {
+      const p = parseKey(key);
+      if (!isAll()) {
+        const info = infoOf(p.y, p.m, p.d);
+        return { info, cur: days()[key] || null, e: effective(key, info), list: null };
+      }
+      const list = [];
+      let anyIn = false, anyOn = false, anyWork = false, holiday = null;
+      for (const j of store.jobs) {
+        withJob(j, () => {
+          const info = infoOf(p.y, p.m, p.d);
+          if (info.out) return;
+          anyIn = true;
+          if (info.holiday) holiday = info.holiday;
+          if (info.on) anyOn = true;
+          if (info.workday) anyWork = true;
+          const e = days()[key];
+          if (e) list.push({ j, e });
+        });
+      }
+      const date = new Date(p.y, p.m, p.d);
+      const info = { y: p.y, m: p.m, d: p.d, date, key, wd: wdIdx(date), holiday, on: anyOn, inJob: anyIn, out: !anyIn, workday: anyWork };
+      let e = null;
+      if (list.length) e = mergeEntries(list.map(x => x.e));
+      else if (anyIn && holiday) e = { presence: null, absence: { status: 'festivo', hours: 0 }, note: '', auto: true };
+      return { info, cur: list.length ? e : null, e: anyIn ? e : null, list };
+    }
+
+    const defHours = st => defHoursFor(st, cfg().stdHours);
+    const allowedStatuses = info => (info.workday ? ORDER : PRESENCE);
+    const longDate = info => `${capFirst(WEEKDAYS[info.wd])} ${info.d} ${MONTHS[info.m]} ${info.y}`;
+    const shortDate = info => `${info.d} ${MONTHS_SHORT[info.m]}`;
+    const hasStatus = (e, st) => !!e && ((e.presence && e.presence.status === st) || (e.absence && e.absence.status === st));
+    const primaryOf = e => (e.absence ? e.absence.status : e.presence.status);
+    const entryOrNull = e => (e && (e.presence || e.absence) ? e : null);
+
+    function yearConf(y) {
+      const own = years()[y];
+      if (own) return { ...own, own: true };
+      let best = null;
+      for (const k of Object.keys(years())) if (+k < y && (best === null || +k > +best)) best = k;
+      if (best !== null) {
+        const b = years()[best];
+        return { ferie: b.ferie, permessi: b.permessi, carryFerie: 0, carryPermessi: 0, own: false };
+      }
+      return { ferie: 26, permessi: 32, carryFerie: 0, carryPermessi: 0, own: false };
+    }
+
+    /* ---- Applicare e togliere uno stato: presenza e assenza convivono ---- */
+    function applyStatus(cur, status) {
+      const std = cfg().stdHours;
+      const e = cur ? clone(cur) : { presence: null, absence: null, note: '' };
+      if (STATUS[status].layer === 'presence') {
+        let a = e.absence;
+        if (a && a.status === 'festivo') { e.absence = null; a = null; }
+        let room = a ? std - a.hours : std;
+        if (a && room <= 0.001) { e.absence = null; room = std; }       // l'assenza riempiva già la giornata: la sostituisco
+        e.presence = { status, hours: round2(room) };
+      } else if (status === 'festivo') {
+        e.presence = null; e.absence = { status, hours: 0 };
+      } else if (status === 'permesso') {
+        const D = Math.min(2, std);
+        const p = e.presence;
+        if (!p) { e.absence = { status, hours: D }; if (D < std) e.presence = { status: 'work', hours: round2(std - D) }; }
+        else {
+          const room = e.absence ? 0 : std - p.hours;
+          if (room >= D - 0.001) e.absence = { status, hours: D };
+          else { e.absence = { status, hours: D }; const ph = round2(std - D); if (ph > 0.001) p.hours = ph; else e.presence = null; }
+        }
+      } else {                                                          // ferie, malattia, chiusura: giornata intera
+        const p = e.presence;
+        if (!e.absence && p && std - p.hours > 0.001) e.absence = { status, hours: round2(std - p.hours) };   // completa una giornata parziale
+        else { e.presence = null; e.absence = { status, hours: std }; }
+      }
+      return e;
+    }
+    function removeStatus(cur, status) {
+      const std = cfg().stdHours;
+      const e = clone(cur);
+      const layer = STATUS[status].layer;
+      const removed = e[layer];
+      e[layer] = null;
+      if (layer === 'absence' && removed && e.presence && removed.hours > 0) {      // ripristina le ore di presenza di una giornata divisa
+        const total = e.presence.hours + removed.hours;
+        if (total <= std + 0.001) e.presence.hours = round2(total);
+      }
+      return entryOrNull(e);
+    }
+
+    /* =====================================================================
+       Statistiche
+       ===================================================================== */
+    function blankStats() {
+      return {
+        days: { work: 0, smart: 0, ferie: 0, malattia: 0, chiusura: 0, festivo: 0 },
+        permHours: 0, permDone: 0, permPlanned: 0,
+        workdays: 0, filled: 0, gaps: 0, firstGap: null,
+        worked: 0, workedDone: 0, overtime: 0,
+        ferieDone: 0, feriePlanned: 0, closureFerie: 0, closureRol: 0
+      };
+    }
+    function addStats(a, b) {
+      for (const k of Object.keys(a.days)) a.days[k] += b.days[k];
+      for (const k of ['permHours', 'permDone', 'permPlanned', 'workdays', 'filled', 'gaps', 'worked', 'workedDone', 'overtime', 'ferieDone', 'feriePlanned', 'closureFerie', 'closureRol']) a[k] += b[k];
+      if (b.firstGap && (!a.firstGap || b.firstGap < a.firstGap)) a.firstGap = b.firstGap;
+      return a;
+    }
+
+    /* Statistiche del rapporto corrente per un mese (m = 0..11) o un anno intero (m = null) */
+    function periodStats(y, m) {
+      const c = cfg(), std = c.stdHours;
+      const from = m == null ? new Date(y, 0, 1) : new Date(y, m, 1);
+      const to = m == null ? new Date(y, 11, 31) : new Date(y, m + 1, 0);
+      const today = keyOfDate(new Date());
+      const r = blankStats();
+      for (let dt = from; dt <= to; dt = addDays(dt, 1)) {
+        const key = keyOfDate(dt);
+        const info = infoOf(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        if (info.out) continue;
+        const entry = days()[key];
+        const e = effective(key, info);
+        if (info.workday) { r.workdays++; if (entry) r.filled++; }
+        if (!e) {
+          if (info.workday && key < today) { r.gaps++; if (!r.firstGap) r.firstGap = key; }
+          continue;
+        }
+        const done = key <= today;
+        const p = e.presence, a = e.absence;
+        if (p) {
+          r.days[p.status] += std > 0 ? Math.min(1, p.hours / std) : 0;
+          r.worked += p.hours;
+          if (done) r.workedDone += p.hours;
+          const expected = info.workday ? Math.max(0, std - (a && a.status !== 'festivo' ? a.hours : 0)) : 0;
+          r.overtime += Math.max(0, p.hours - expected);
+        }
+        if (a) {
+          const eq = std > 0 ? Math.min(1, a.hours / std) : 0;
+          if (a.status === 'festivo') { if (info.on) r.days.festivo += 1; }
+          else if (info.workday) {
+            if (a.status === 'ferie') { r.days.ferie += eq; if (done) r.ferieDone += eq; else r.feriePlanned += eq; }
+            else if (a.status === 'malattia') r.days.malattia += eq;
+            else if (a.status === 'permesso') { r.permHours += a.hours; if (done) r.permDone += a.hours; else r.permPlanned += a.hours; }
+            else if (a.status === 'chiusura') {
+              r.days.chiusura += eq;
+              if (c.closureDeduct === 'ferie') { r.closureFerie += eq; if (done) r.ferieDone += eq; else r.feriePlanned += eq; }
+              else if (c.closureDeduct === 'rol') { r.closureRol += a.hours; if (done) r.permDone += a.hours; else r.permPlanned += a.hours; }
+            }
+          }
+        }
+      }
+      return r;
+    }
+
+    const jobInYear = (j, y) => (!j.start || +j.start.slice(0, 4) <= y) && (!j.end || +j.end.slice(0, 4) >= y);
+    // Somma di tutti i datori di lavoro per un mese o un anno
+    function allStats(y, m) {
+      const t = blankStats();
+      store.jobs.forEach(j => { if (jobInYear(j, y)) addStats(t, withJob(j, () => periodStats(y, m))); });
+      return t;
+    }
+    // Storico di un datore: somma di tutti gli anni del rapporto
+    function historyOf(j) {
+      return withJob(j, () => {
+        const keys = Object.keys(days()).sort();
+        const thisY = new Date().getFullYear();
+        const first = j.start ? +j.start.slice(0, 4) : (keys.length ? +keys[0].slice(0, 4) : thisY);
+        const last = j.end ? +j.end.slice(0, 4) : Math.max(thisY, keys.length ? +keys[keys.length - 1].slice(0, 4) : 0);
+        const t = blankStats();
+        for (let y = Math.max(first, last - 60); y <= last; y++) addStats(t, periodStats(y, null));
+        return t;
+      });
+    }
+
+    // Maturazione a ore lavorate (ferie in giorni, permessi in ore)
+    function accrualFor(ys) {
+      const a = cfg().accrual, out = {};
+      for (const k of ['ferie', 'permessi']) out[k] = a[k].mode === 'worked' && a[k].every > 0 ? ys.workedDone * a[k].per / a[k].every : null;
+      return out;
+    }
+    function balanceOf(y, ys) {
+      ys = ys || periodStats(y, null);
+      const c = cfg(), conf = yearConf(y), acc = accrualFor(ys);
+      const fW = c.accrual.ferie.mode === 'worked', pW = c.accrual.permessi.mode === 'worked';
+      return {
+        conf, acc, ys,
+        ferie: { avail: fW ? conf.carryFerie + (acc.ferie || 0) : conf.ferie + conf.carryFerie, done: ys.ferieDone, plan: ys.feriePlanned, worked: fW, matured: acc.ferie },
+        perm: { avail: pW ? conf.carryPermessi + (acc.permessi || 0) : conf.permessi + conf.carryPermessi, done: ys.permDone, plan: ys.permPlanned, worked: pW, matured: acc.permessi }
+      };
+    }
+
+    /* =====================================================================
+       Stato dell'interfaccia, annulla/ripeti
+       ===================================================================== */
+    const now0 = new Date();
+    let view = { y: now0.getFullYear(), m: now0.getMonth() };
+    let activeBrush = 'cycle';
+    let focusKey = null;
+    let anchorKey = null, lastErase = false;
+    const cells = new Map();
+    let undoStack = [], redoStack = [], txn = null, drag = null;
+    let lastTodayKey = keyOfDate(now0);
+
+    const snap = () => JSON.stringify({ jobs: store.jobs, settings: store.settings });
+
+    function begin(label) { txn = { label, before: snap(), changed: false }; }
+    function end() {
+      if (!txn) return false;
+      const t = txn; txn = null;
+      if (!t.changed) return false;
+      undoStack.push({ label: t.label, state: t.before });
+      if (undoStack.length > 40) undoStack.shift();
+      redoStack = [];
+      persist();
+      renderPanels();
+      return true;
+    }
+    function act(label, fn) {
+      begin(label);
+      try { fn(); } catch (err) { txn = null; throw err; }
+      return end();
+    }
+    function restore(state) {
+      const o = JSON.parse(state);
+      const theme = store.settings.theme;
+      store.jobs = o.jobs; store.settings = o.settings; store.settings.theme = theme;
+      syncActive();
+      holCache.clear();
+      persist();
+      renderAll();
+    }
+    function undo() {
+      if (drag || !undoStack.length) return;
+      const u = undoStack.pop();
+      redoStack.push({ label: u.label, state: snap() });
+      restore(u.state);
+      toast(`Annullato: ${u.label}`, { label: 'Ripeti', fn: redo });
+    }
+    function redo() {
+      if (drag || !redoStack.length) return;
+      const r = redoStack.pop();
+      undoStack.push({ label: r.label, state: snap() });
+      restore(r.state);
+      toast(`Ripetuto: ${r.label}`);
+    }
+
+    function setDay(key, entry) {
+      const cur = days()[key];
+      if (entry === null) {
+        if (!cur) return false;
+        delete days()[key];
+      } else {
+        if (cur && JSON.stringify(cur) === JSON.stringify(entry)) return false;
+        days()[key] = entry;
+      }
+      if (txn) txn.changed = true;
+      updateCell(key);
+      schedulePanels();
+      return true;
+    }
+
+    let panelRaf = 0;
+    function schedulePanels() {
+      if (panelRaf) return;
+      panelRaf = requestAnimationFrame(() => { panelRaf = 0; renderPanels(); });
+    }
+
+    /* =====================================================================
+       Toast e dialoghi
+       ===================================================================== */
+    let toastTimer = 0;
+    function toast(msg, action) {
+      const box = $('#toasts');
+      box.textContent = '';
+      const t = document.createElement('div');
+      t.className = 'toast';
+      const s = document.createElement('span');
+      s.textContent = msg;
+      t.append(s);
+      if (action) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.textContent = action.label;
+        b.addEventListener('click', () => { t.remove(); action.fn(); });
+        t.append(b);
+      }
+      box.append(t);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.remove(), action ? 8000 : 4500);
+    }
+    const toastUndo = msg => toast(msg, { label: 'Annulla', fn: undo });
+
+    // Apre un dialogo e ricorda quando: il "click" sintetico che segue una pressione prolungata
+    // sullo schermo touch non deve chiuderlo subito toccando lo sfondo.
+    function openDlg(dlg) { dlg._openedAt = Date.now(); dlg.showModal(); }
+
+    function askChoice({ title, text, choices }) {
+      return new Promise(resolve => {
+        const d = $('#choiceDlg');
+        $('#cTitle').textContent = title;
+        $('#cText').textContent = text;
+        const box = $('#cBtns');
+        box.textContent = '';
+        let result = null;
+        choices.forEach(c => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn ' + (c.kind || '');
+          b.textContent = c.label;
+          if (c.focus) b.autofocus = true;
+          b.addEventListener('click', () => { result = c.value; d.close(); });
+          box.append(b);
+        });
+        d.addEventListener('close', () => resolve(result), { once: true });
+        openDlg(d);
+      });
+    }
+
+    /* =====================================================================
+       Rendering: calendario
+       ===================================================================== */
+    function chipFor(e) {
+      if (!e || e.auto || (e.presence && e.absence)) return '';
+      const p = e.presence || e.absence;
+      if (p.status === 'festivo') return '';
+      if (p.status === 'permesso' || p.hours !== defHours(p.status)) return `${fmt(p.hours)}h`;
+      return '';
+    }
+    function describe(e, info) {
+      if (!e) return '';
+      return [e.presence, e.absence].filter(Boolean).map(p => (e.auto ? info.holiday : `${STATUS[p.status].label}${p.status === 'festivo' ? '' : `, ${fmt(p.hours)} ore`}`)).join(' e ');
+    }
+
+    function updateCell(key) {
+      const el = cells.get(key);
+      if (!el) return;
+      const { info, cur, e, list } = dayView(key);
+      const today = keyOfDate(new Date());
+      const mixed = !!(e && e.presence && e.absence);
+      const gap = !e && info.workday && key < today;
+      const uncounted = !isAll() && !!cur && !!cur.absence && ['ferie', 'permesso', 'malattia', 'chiusura'].includes(cur.absence.status) && !info.workday;
+
+      let cls = 'day';
+      if (info.out) cls += ' out'; else if (!info.on) cls += ' off';
+      if (isAll()) cls += ' readonly';
+      if (key === today) cls += ' today';
+      if (e) {
+        cls += ' has';
+        if (mixed) cls += ' mixed'; else cls += ` st-${(e.absence || e.presence).status}`;
+      }
+      if (gap) cls += ' gap';
+      if (uncounted) cls += ' uncounted';
+      if (cur && cur.note) cls += ' has-note';
+      el.className = cls;
+      if (mixed) { el.style.setProperty('--c1', `var(--c-${e.presence.status})`); el.style.setProperty('--c2', `var(--c-${e.absence.status})`); }
+      else { el.style.removeProperty('--c1'); el.style.removeProperty('--c2'); }
+
+      const parts = e ? [e.presence, e.absence].filter(Boolean) : [];
+      el._t.forEach((t, i) => {
+        const p = parts[i];
+        if (!p) { t.root.hidden = true; t.root.className = 'tagline'; return; }
+        t.root.hidden = false;
+        t.root.className = `tagline st-${p.status}`;
+        let long, short;
+        if (e.auto) { long = info.holiday; short = 'Festa'; }
+        else {
+          long = STATUS[p.status].cell; short = STATUS[p.status].short;
+          if (mixed) long = `${STATUS[p.status].mix} ${fmt(p.hours)}h`;
+        }
+        t.long.textContent = long; t.short.textContent = short;
+      });
+      el._meta.textContent = chipFor(e);
+
+      let aria = longDate(info);
+      if (info.out) aria += ', fuori dal rapporto di lavoro';
+      else {
+        if (info.holiday && !(e && e.auto)) aria += `, ${info.holiday}`;
+        if (e) aria += `: ${describe(e, info)}`;
+        else if (!info.on) aria += ', giorno non lavorativo';
+        else if (gap) aria += ', nessuno stato inserito';
+      }
+      if (uncounted) aria += ' (non conteggiato perché giorno non lavorativo)';
+      if (cur && cur.note) aria += `. Nota: ${cur.note.slice(0, 120)}`;
+      el.setAttribute('aria-label', aria);
+      if (list && list.length) el.title = list.map(x => `${x.j.name}: ${describe(x.e, info)}${x.e.note ? ` (${x.e.note})` : ''}`).join('\n');
+      else el.title = cur && cur.note ? cur.note : (uncounted ? 'Non conteggiato: giorno non lavorativo' : (info.holiday || ''));
+    }
+
+    function buildGrid() {
+      const { y, m } = view;
+      $('#monthTitle').textContent = `${MONTHS[m]} ${y}`;
+      const grid = $('#daysGrid');
+      grid.textContent = '';
+      cells.clear();
+      const lead = wdIdx(new Date(y, m, 1));
+      const n = daysIn(y, m);
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < lead; i++) {
+        const p = document.createElement('span');
+        p.className = 'day pad';
+        p.setAttribute('aria-hidden', 'true');
+        frag.append(p);
+      }
+      const tag = '<span class="tagline"><span class="long"></span><span class="short"></span></span>';
+      for (let d = 1; d <= n; d++) {
+        const key = keyOf(y, m, d);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.key = key;
+        b.tabIndex = -1;
+        b.innerHTML = `<span class="d-top"><span class="d-num"></span><span class="d-meta"></span></span><span class="d-tags">${tag}${tag}</span>`;
+        b.querySelector('.d-num').textContent = d;
+        b._meta = b.querySelector('.d-meta');
+        b._t = $$('.tagline', b).map(t => ({ root: t, long: t.querySelector('.long'), short: t.querySelector('.short') }));
+        cells.set(key, b);
+        frag.append(b);
+      }
+      grid.append(frag);
+      if (!focusKey || !cells.has(focusKey)) {
+        const t = keyOfDate(new Date());
+        focusKey = cells.has(t) ? t : keyOf(y, m, 1);
+      }
+      cells.forEach((el, k) => { updateCell(k); el.tabIndex = k === focusKey ? 0 : -1; });
+    }
+
+    function setFocusKey(key) {
+      if (focusKey === key) return;
+      const old = cells.get(focusKey), nu = cells.get(key);
+      if (old) old.tabIndex = -1;
+      if (nu) nu.tabIndex = 0;
+      focusKey = key;
+    }
+
+    /* =====================================================================
+       Rendering: barra laterale e cartellino annuale
+       ===================================================================== */
+    function balItem(o) {
+      const used = o.done + o.plan, res = o.avail - used, over = res < 0;
+      const pct = v => (o.avail > 0 ? Math.max(0, Math.min(100, (v / o.avail) * 100)) : (v > 0 ? 100 : 0));
+      const doneP = pct(o.done), planP = Math.min(pct(o.plan), 100 - doneP);
+      const resTxt = over ? `<b>${fmt(-res)}</b> ${o.unit} oltre il ${o.worked ? 'maturato' : 'monte'}` : `<b>${fmt(res)}</b> ${o.unit} residui`;
+      return `<div class="bal ${o.cls}${over ? ' over' : ''}">
+        <div class="bal-top"><span class="bal-name">${esc(o.name)}</span><span class="bal-res">${resTxt}</span></div>
+        <div class="meter" role="meter" aria-label="${esc(o.name)}: usati" aria-valuemin="0" aria-valuemax="${Math.max(o.avail, 1)}" aria-valuenow="${fmt(used)}" aria-valuetext="${fmt(used)} ${o.unit} usati su ${fmt(o.avail)}">
+          <i class="done" style="width:${doneP}%"></i><i class="plan" style="width:${planP}%"></i>
+        </div>
+        <p class="bal-sub">${fmt(o.done)} ${o.unit} già usati, ${fmt(o.plan)} ${o.unit} pianificati, su ${fmt(o.avail)} ${o.worked ? 'maturati' : 'disponibili'}.${o.extra || ''}</p>
+      </div>`;
+    }
+    function statRow(k, value, unit, opts = {}) {
+      return `<div class="stat-row st-${k}${value ? '' : ' zero'}${opts.over ? ' over' : ''}">
+        <span class="stat-label"><i class="swatch"></i>${esc(STATUS[k].label)}</span>
+        <span class="stat-val">${opts.text || `${fmt(value)} ${unit}`}</span></div>`;
+    }
+    const plainRow = (label, val, cls = '') => `<div class="stat-row ${cls}"><span class="stat-label">${esc(label)}</span><span class="stat-val">${val}</span></div>`;
+
+    function renderBalances() {
+      const y = view.y, box = $('#balances');
+      $('#balTitle').innerHTML = `Saldi ${y}${isAll() ? ' <span class="jobtag">tutti i datori</span>' : ` <span class="jobtag">${esc(job().name)}</span>`}`;
+      if (!isAll()) {
+        const b = balanceOf(y);
+        box.innerHTML =
+          balItem({ cls: 'st-ferie', name: 'Ferie', unit: 'gg', worked: b.ferie.worked, avail: b.ferie.avail, done: b.ferie.done, plan: b.ferie.plan,
+            extra: b.ys.closureFerie > 0 ? ` Include ${fmt(b.ys.closureFerie)} gg di chiusura aziendale.` : '' }) +
+          balItem({ cls: 'st-permesso', name: 'Permessi e ROL', unit: 'h', worked: b.perm.worked, avail: b.perm.avail, done: b.perm.done, plan: b.perm.plan,
+            extra: b.ys.closureRol > 0 ? ` Include ${fmt(b.ys.closureRol)} h di chiusura aziendale.` : '' });
+        return;
+      }
+      const rows = [];
+      const tot = { f: { avail: 0, done: 0, plan: 0 }, p: { avail: 0, done: 0, plan: 0 } };
+      store.jobs.filter(j => jobInYear(j, y)).forEach(j => {
+        const b = withJob(j, () => balanceOf(y));
+        for (const [k, s] of [['f', b.ferie], ['p', b.perm]]) { tot[k].avail += s.avail; tot[k].done += s.done; tot[k].plan += s.plan; }
+        rows.push(`<tr><td>${esc(j.name)}</td><td>${fmt(b.ferie.avail - b.ferie.done - b.ferie.plan)}</td><td>${fmt(b.perm.avail - b.perm.done - b.perm.plan)}</td></tr>`);
+      });
+      box.innerHTML =
+        balItem({ cls: 'st-ferie', name: 'Ferie (somma)', unit: 'gg', avail: tot.f.avail, done: tot.f.done, plan: tot.f.plan }) +
+        balItem({ cls: 'st-permesso', name: 'Permessi e ROL (somma)', unit: 'h', avail: tot.p.avail, done: tot.p.done, plan: tot.p.plan }) +
+        (rows.length ? `<table class="hist" style="margin-top:0.9rem"><thead><tr><th>Residui per datore</th><th>Ferie gg</th><th>ROL h</th></tr></thead><tbody>${rows.join('')}</tbody></table>` : '');
+    }
+
+    function renderAccrual() {
+      const box = $('#accrual');
+      if (isAll()) { box.hidden = true; box.innerHTML = ''; return; }
+      const c = cfg(), y = view.y;
+      const fW = c.accrual.ferie.mode === 'worked', pW = c.accrual.permessi.mode === 'worked';
+      const b = balanceOf(y);
+      if (!fW && !pW) {
+        box.innerHTML = '<h4>Maturazione a ore lavorate</h4>' + plainRow('Ore lavorate a oggi', `${fmt(b.ys.workedDone)} h`) +
+          '<p class="fine">Per vedere quanti permessi hai maturato con le ore svolte, indica la regola del tuo contratto, per esempio 8 ore ogni 173 ore lavorate.</p>' +
+          '<button type="button" class="btn" data-act="setup-accrual">Imposta la maturazione</button>';
+        box.hidden = false;
+        return;
+      }
+      const sn = job().snaps[y];
+      let h = '<h4>Maturazione a ore lavorate</h4>' + plainRow('Ore lavorate a oggi', `${fmt(b.ys.workedDone)} h`);
+      if (fW) h += plainRow('Ferie maturate', `${fmt(b.acc.ferie)} gg`);
+      if (pW) h += plainRow('Permessi maturati', `${fmt(b.acc.permessi)} h`);
+      const rules = [];
+      if (fW) rules.push(`ferie: ${fmt(c.accrual.ferie.per)} gg ogni ${fmt(c.accrual.ferie.every)} h`);
+      if (pW) rules.push(`permessi: ${fmt(c.accrual.permessi.per)} h ogni ${fmt(c.accrual.permessi.every)} h`);
+      h += `<p class="fine">Regola impostata, ${esc(rules.join('; '))}. Contano solo le ore di lavoro e smart working fino a oggi.</p>`;
+      const label = fW && pW ? 'Aggiorna maturazione' : pW ? 'Aggiorna permessi maturati' : 'Aggiorna ferie maturate';
+      h += `<button type="button" class="btn" data-act="update-accrual">${label}</button>`;
+      if (sn) {
+        const bits = [];
+        if (fW) bits.push(`ferie ${b.acc.ferie - sn.ferie >= 0 ? '+' : ''}${fmt(b.acc.ferie - sn.ferie)} gg`);
+        if (pW) bits.push(`permessi ${b.acc.permessi - sn.permessi >= 0 ? '+' : ''}${fmt(b.acc.permessi - sn.permessi)} h`);
+        h += `<p class="fine">Ultimo aggiornamento il ${fmtDate(sn.date)}. Da allora: ${esc(bits.join(', '))}.</p>`;
+      } else h += '<p class="fine">Non hai ancora aggiornato la maturazione per quest’anno.</p>';
+      box.innerHTML = h;
+      box.hidden = false;
+    }
+
+    function renderMonthYear() {
+      const { y, m } = view;
+      const all = isAll();
+      const ms = all ? allStats(y, m) : periodStats(y, m);
+      const ys = all ? allStats(y, null) : periodStats(y, null);
+      const cap = all ? 0 : cfg().smartCap;
+
+      $('#monthStatsTitle').innerHTML = `${esc(capFirst(MONTHS[m]))}${all ? ' <span class="jobtag">somma</span>' : ''}`;
+      let h = `<p class="stat-note">${ms.filled} di ${ms.workdays} giorni lavorativi compilati.</p>`;
+      if (ms.gaps) {
+        h += `<button type="button" class="stat-gap" data-act="goto" data-key="${ms.firstGap}">${ms.gaps} ${ms.gaps === 1 ? 'giorno passato senza stato' : 'giorni passati senza stato'}. Vai al primo.</button>`;
+      }
+      h += statRow('work', ms.days.work, 'gg');
+      if (cap > 0) {
+        const over = ms.days.smart > cap;
+        const w = Math.min(100, (ms.days.smart / cap) * 100);
+        h += statRow('smart', ms.days.smart, 'gg', { text: `${fmt(ms.days.smart)} di ${cap} gg`, over });
+        h += `<div class="meter cap-meter st-smart"><i class="done" style="width:${w}%;${over ? 'background:var(--danger)' : ''}"></i></div>`;
+      } else h += statRow('smart', ms.days.smart, 'gg');
+      h += statRow('ferie', ms.days.ferie, 'gg') + statRow('permesso', ms.permHours, 'h') + statRow('malattia', ms.days.malattia, 'gg') +
+        statRow('chiusura', ms.days.chiusura, 'gg') + statRow('festivo', ms.days.festivo, 'gg');
+      if (ms.worked > 0) h += plainRow('Ore lavorate', `${fmt(ms.worked)} h`);
+      if (ms.overtime > 0) h += plainRow('Di cui straordinario', `${fmt(ms.overtime)} h`);
+      $('#monthStats').innerHTML = h;
+
+      const yt = (k, v, unit) => `<div class="yt st-${k}"><i class="swatch"></i><span>${esc(STATUS[k].label)}</span><b>${fmt(v)} ${unit}</b></div>`;
+      $('#yearStats').innerHTML =
+        yt('work', ys.days.work, 'gg') + yt('smart', ys.days.smart, 'gg') + yt('ferie', ys.days.ferie, 'gg') +
+        yt('permesso', ys.permHours, 'h') + yt('malattia', ys.days.malattia, 'gg') + yt('chiusura', ys.days.chiusura, 'gg') + yt('festivo', ys.days.festivo, 'gg') +
+        (ys.overtime > 0 ? `<div class="yt"><span>Straordinario</span><b>${fmt(ys.overtime)} h</b></div>` : '');
+    }
+
+    function periodLabel(j) {
+      if (j.start && j.end) return `dal ${fmtDate(j.start)} al ${fmtDate(j.end)}`;
+      if (j.start) return `dal ${fmtDate(j.start)}, in corso`;
+      if (j.end) return `fino al ${fmtDate(j.end)}`;
+      return 'senza date';
+    }
+
+    function renderHistory() {
+      const sec = $('#histSec');
+      sec.hidden = !isAll();
+      if (!isAll()) return;
+      const tot = blankStats();
+      const rows = store.jobs.slice().sort((a, b) => (a.start || '') < (b.start || '') ? -1 : 1).map(j => {
+        const h = historyOf(j);
+        addStats(tot, h);
+        return `<tr><td>${esc(j.name)}<span class="sub">${esc(periodLabel(j))}</span></td><td>${fmt(h.workedDone)}</td><td>${fmt(h.days.ferie)}</td><td>${fmt(h.permHours)}</td><td>${fmt(h.days.malattia)}</td></tr>`;
+      });
+      $('#histStats').innerHTML = `<table class="hist"><thead><tr><th>Datore</th><th>Ore lavorate</th><th>Ferie gg</th><th>ROL h</th><th>Malattia gg</th></tr></thead>
+        <tbody>${rows.join('')}</tbody>
+        <tfoot><tr><td>Totale</td><td>${fmt(tot.workedDone)}</td><td>${fmt(tot.days.ferie)}</td><td>${fmt(tot.permHours)}</td><td>${fmt(tot.days.malattia)}</td></tr></tfoot></table>
+        <p class="stat-note" style="margin-top:0.6rem">Somma di tutti gli anni di ogni rapporto. Le ore lavorate arrivano fino a oggi.</p>`;
+    }
+
+    function renderYearMap() {
+      const y = view.y;
+      $('#yearTitle').innerHTML = `Cartellino ${y}${isAll() ? ' <span class="jobtag">tutti i datori</span>' : ''}`;
+      const today = keyOfDate(new Date());
+      const ticks = new Set([1, 5, 10, 15, 20, 25, 31]);
+      let html = '<div class="ym-row"><span></span><div class="ym-ticks" aria-hidden="true">';
+      for (let d = 1; d <= 31; d++) html += `<span>${ticks.has(d) ? d : ''}</span>`;
+      html += '</div></div>';
+      for (let m = 0; m < 12; m++) {
+        const n = daysIn(y, m);
+        html += `<div class="ym-row${m === view.m ? ' cur' : ''}"><button type="button" class="ym-m" data-month="${m}" aria-label="Vai a ${MONTHS[m]} ${y}">${MONTHS_SHORT[m]}</button><div class="ym-days" aria-hidden="true">`;
+        for (let d = 1; d <= 31; d++) {
+          if (d > n) { html += '<span class="ym-d void"></span>'; continue; }
+          const key = keyOf(y, m, d);
+          const { info, e } = dayView(key);
+          let cls = 'ym-d', title = `${d} ${MONTHS_SHORT[m]}`, style = '';
+          if (info.out) { cls += ' out'; title += ': fuori dal rapporto'; }
+          else if (e) {
+            if (e.presence && e.absence) { cls += ' has mix'; style = ` style="--c1:var(--c-${e.presence.status});--c2:var(--c-${e.absence.status})"`; }
+            else cls += ` has st-${(e.absence || e.presence).status}`;
+            title += `: ${describe(e, info)}`;
+          } else if (!info.on) cls += ' off';
+          else if (info.workday && key < today) { cls += ' gap'; title += ': da compilare'; }
+          if (!e && info.holiday && !info.out) title += `: ${info.holiday}`;
+          if (key === today) cls += ' today';
+          html += `<span class="${cls}"${style} data-key="${key}" title="${esc(title)}"></span>`;
+        }
+        html += '</div></div>';
+      }
+      $('#yearMap').innerHTML = html;
+    }
+
+    function updateUndoUI() {
+      const u = $('#undoBtn'), r = $('#redoBtn');
+      u.disabled = !undoStack.length;
+      r.disabled = !redoStack.length;
+      const ul = undoStack.length ? undoStack[undoStack.length - 1].label : '';
+      const rl = redoStack.length ? redoStack[redoStack.length - 1].label : '';
+      u.title = ul ? `Annulla: ${ul} (Ctrl+Z)` : 'Annulla (Ctrl+Z)';
+      r.title = rl ? `Ripeti: ${rl} (Ctrl+Maiusc+Z)` : 'Ripeti (Ctrl+Maiusc+Z)';
+      u.setAttribute('aria-label', u.title); r.setAttribute('aria-label', r.title);
+    }
+
+    function renderBackupInfo() {
+      const el = $('#backupInfo');
+      const lb = store.meta.lastBackup;
+      const n = store.jobs.reduce((s, j) => s + Object.keys(j.days).length, 0);
+      let txt, warn = false;
+      if (!lb) { txt = n ? 'Non hai ancora fatto nessun backup.' : 'Nessun dato da salvare.'; warn = n >= 5; }
+      else {
+        const d = Math.floor((Date.now() - Date.parse(lb)) / 86400000);
+        txt = d <= 0 ? 'Ultimo backup: oggi.' : d === 1 ? 'Ultimo backup: ieri.' : `Ultimo backup: ${d} giorni fa.`;
+        warn = d > 30 && n > 0;
+      }
+      el.className = warn ? 'warn' : '';
+      el.innerHTML = `${esc(txt)}${warn ? ' <button type="button" class="linklike" data-act="export-json">Salva un backup ora</button>' : ''}`;
+    }
+
+    function renderSaveState() {
+      const el = $('#saveState'), b = $('#banner');
+      if (!storageOK) {
+        el.textContent = 'Non salvato: il browser blocca la memoria locale';
+        b.textContent = 'Il browser non permette di salvare i dati (navigazione privata o cookie disattivati). Quello che inserisci andrà perso alla chiusura: scarica un backup JSON dal menu Dati prima di uscire.';
+        b.hidden = false;
+      } else {
+        el.textContent = 'Salvato automaticamente in questo browser';
+        b.hidden = true;
+      }
+    }
+
+    function renderJobBar() {
+      const sel = $('#jobSel');
+      sel.textContent = '';
+      store.jobs.forEach(j => sel.append(new Option(`${j.name} (${periodLabel(j)})`, j.id)));
+      if (store.jobs.length > 1) sel.append(new Option('Tutti i datori di lavoro (somma)', ALL));
+      sel.value = store.activeJob;
+    }
+
+    function renderJobNote() {
+      const el = $('#jobNote');
+      if (isAll()) { el.hidden = true; return; }
+      const j = job();
+      const first = keyOf(view.y, view.m, 1), last = keyOf(view.y, view.m, daysIn(view.y, view.m));
+      const t = [];
+      if (j.start && first < j.start) t.push(`Prima del ${fmtDate(j.start)} non c’è rapporto con ${j.name}: quei giorni non si segnano e non contano.`);
+      if (j.end && last > j.end) t.push(`Il rapporto con ${j.name} è terminato il ${fmtDate(j.end)}: i giorni dopo non si segnano.`);
+      el.hidden = !t.length;
+      el.textContent = t.join(' ');
+    }
+
+    function renderModeState() {
+      const all = isAll();
+      $('#trayWrap').hidden = all;
+      const vn = $('#viewNote');
+      vn.hidden = !all;
+      vn.textContent = 'Vista somma di tutti i datori di lavoro, in sola lettura. Scegli un datore dal menu in alto per modificare i giorni.';
+      $('#fillMenu > button').disabled = all;
+      ['#jsonJobItem', '#yearItem', '#csvItem'].forEach(id => { $(id).disabled = all; });
+      const c = all ? null : cfg();
+      [['#qFerie', c && c.accrual.ferie.mode === 'worked'], ['#qPerm', c && c.accrual.permessi.mode === 'worked'], ['#qCarryFerie', false], ['#qCarryPerm', false]]
+        .forEach(([id, off]) => { $(id).disabled = all || !!off; });
+    }
+
+    function renderPanels() {
+      renderBalances();
+      renderAccrual();
+      renderMonthYear();
+      renderHistory();
+      renderYearMap();
+      updateUndoUI();
+      renderBackupInfo();
+      renderModeState();
+      renderQuotaInputs();
+      $('#yearItem').textContent = `Esporta anno ${view.y} completo (CSV)`;
+      $('#csvItem').textContent = `Esporta solo giorni compilati ${view.y} (CSV)`;
+    }
+
+    function renderQuotaInputs() {
+      if (isAll()) return;
+      const conf = yearConf(view.y);
+      const setIf = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v; };
+      setIf('#qFerie', conf.ferie); setIf('#qCarryFerie', conf.carryFerie);
+      setIf('#qPerm', conf.permessi); setIf('#qCarryPerm', conf.carryPermessi);
+    }
+
+    function renderAll() {
+      applyTheme();
+      renderJobBar();
+      buildGrid();
+      renderPanels();
+      renderJobNote();
+      updateTray();
+      renderHint();
+      renderSaveState();
+    }
+
+    /* =====================================================================
+       Timbri, suggerimenti, tema
+       ===================================================================== */
+    function buildTray() {
+      const tray = $('#tray');
+      tray.textContent = '';
+      const items = [{ key: 'cycle', label: 'Cicla stati', kbd: 'C' }].concat(ORDER.map((k, i) => ({ key: k, label: STATUS[k].label, kbd: String(i + 1) })));
+      for (const it of items) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'stamp ' + (it.key === 'cycle' ? 'st-cycle' : `st-${it.key}`);
+        b.dataset.brush = it.key;
+        b.innerHTML = `<span>${esc(it.label)}</span><kbd aria-hidden="true">${it.kbd}</kbd>`;
+        b.addEventListener('click', () => setBrush(it.key));
+        tray.append(b);
+      }
+    }
+    function updateTray() { $$('.stamp').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.brush === activeBrush))); }
+    function setBrush(mode) { activeBrush = mode; updateTray(); }
+    function renderHint() {
+      const coarse = window.matchMedia('(pointer: coarse)').matches;
+      $('#hint').textContent = coarse
+        ? 'Tocca un giorno per applicare il timbro scelto. Tieni premuto per aprire i dettagli: presenza, assenza, ore, note e intervallo di date.'
+        : 'Il clic applica il timbro, un secondo clic sullo stesso stato lo toglie. Trascina o usa Maiusc+clic per un intervallo. Tasto destro (o E) apre i dettagli, dove un giorno può avere sia lavoro sia ferie o permesso.';
+    }
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const THEME_ICON = {
+      auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
+      light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+      dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
+    };
+    const THEME_NAME = { auto: 'automatico', light: 'chiaro', dark: 'scuro' };
+    function applyTheme() {
+      const t = store.settings.theme;
+      document.documentElement.dataset.theme = t === 'auto' ? (mq.matches ? 'dark' : 'light') : t;
+      const b = $('#themeBtn');
+      b.innerHTML = THEME_ICON[t];
+      b.title = `Tema ${THEME_NAME[t]}: clic per cambiare`;
+      b.setAttribute('aria-label', b.title);
+    }
+    $('#themeBtn').addEventListener('click', () => {
+      store.settings.theme = { auto: 'light', light: 'dark', dark: 'auto' }[store.settings.theme];
+      persist(); applyTheme();
+    });
+    if (mq.addEventListener) mq.addEventListener('change', applyTheme); else if (mq.addListener) mq.addListener(applyTheme);
+
+    /* =====================================================================
+       Navigazione e scelta del datore di lavoro
+       ===================================================================== */
+    function changeMonth(delta) {
+      let m = view.m + delta;
+      const y = view.y + Math.floor(m / 12);
+      m = ((m % 12) + 12) % 12;
+      const old = parseKey(focusKey);
+      view = { y, m };
+      focusKey = keyOf(y, m, old ? Math.min(old.d, daysIn(y, m)) : 1);
+      renderAll();
+    }
+    function goToday() {
+      const t = new Date();
+      view = { y: t.getFullYear(), m: t.getMonth() };
+      focusKey = keyOfDate(t);
+      renderAll();
+    }
+    function goTo(key) {
+      const p = parseKey(key);
+      if (!p) return;
+      view = { y: p.y, m: p.m };
+      focusKey = key;
+      renderAll();
+      const el = cells.get(key);
+      if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
+    }
+    function clampViewToJob() {
+      if (isAll()) return;
+      const j = job();
+      const first = keyOf(view.y, view.m, 1), last = keyOf(view.y, view.m, daysIn(view.y, view.m));
+      let p = null;
+      if (j.start && last < j.start) p = parseKey(j.start);
+      else if (j.end && first > j.end) p = parseKey(j.end);
+      if (p) { view = { y: p.y, m: p.m }; focusKey = null; }
+    }
+    function selectJob(id) {
+      if (id !== ALL && !store.jobs.some(j => j.id === id)) return;
+      store.activeJob = id;
+      syncActive();
+      undoStack = []; redoStack = [];
+      clampViewToJob();
+      persist();
+      renderAll();
+    }
+    $('#jobSel').addEventListener('change', e => selectJob(e.target.value));
+    $('#prevBtn').addEventListener('click', () => changeMonth(-1));
+    $('#nextBtn').addEventListener('click', () => changeMonth(1));
+    $('#todayBtn').addEventListener('click', goToday);
+    $('#undoBtn').addEventListener('click', undo);
+    $('#redoBtn').addEventListener('click', redo);
+
+    $('#yearMap').addEventListener('click', e => {
+      const mb = e.target.closest('.ym-m');
+      if (mb) {
+        const m = +mb.dataset.month;
+        const old = parseKey(focusKey);
+        view = { y: view.y, m };
+        focusKey = keyOf(view.y, m, old ? Math.min(old.d, daysIn(view.y, m)) : 1);
+        renderAll();
+        return;
+      }
+      const d = e.target.closest('.ym-d[data-key]');
+      if (d) goTo(d.dataset.key);
+    });
+
+    /* =====================================================================
+       Interazione con i giorni
+       ===================================================================== */
+    const grid = $('#daysGrid');
+    const cellOf = t => (t && t.closest ? t.closest('.day[data-key]') : null);
+
+    function outMessage(key) {
+      const j = job();
+      return j.start && key < j.start
+        ? `Il rapporto con ${j.name} inizia il ${fmtDate(j.start)}: i giorni prima non si segnano.`
+        : `Il rapporto con ${j.name} è terminato il ${fmtDate(j.end)}: i giorni dopo non si segnano.`;
+    }
+    const readOnlyMessage = () => 'Vista somma in sola lettura. Scegli un datore di lavoro dal menu in alto per modificare i giorni.';
+
+    // Applica un timbro a un giorno. Restituisce 'changed' | 'same' | 'skip' | 'out'.
+    function paintDay(key, brush, erase, range) {
+      const info = infoOfKey(key);
+      if (!info) return 'same';
+      if (info.out) return 'out';
+      const cur = days()[key] || null;
+      if (erase) {
+        if (hasStatus(cur, brush)) { setDay(key, removeStatus(cur, brush)); return 'changed'; }
+        return 'same';
+      }
+      if (range && !info.workday) return 'skip';                        // negli intervalli salto weekend e festivi
+      if (brush === 'festivo' && info.holiday) {                        // il festivo "vero" è già automatico
+        if (cur) { setDay(key, null); return 'changed'; }
+        return 'same';
+      }
+      if (!allowedStatuses(info).includes(brush)) return 'skip';
+      if (hasStatus(cur, brush)) return 'same';
+      setDay(key, applyStatus(cur, brush));
+      return 'changed';
+    }
+
+    function cycleDay(key) {
+      const info = infoOfKey(key);
+      if (info.out) { toast(outMessage(key)); return; }
+      const order = info.workday ? ORDER : PRESENCE;
+      const cur = days()[key] || null;
+      const mk = st => { const e = applyStatus(null, st); e.note = cur ? cur.note : ''; return e; };
+      if (!cur) { setDay(key, mk(order[0])); return; }
+      const i = order.indexOf(primaryOf(cur));
+      if (i === -1 || i === order.length - 1) { setDay(key, null); return; }
+      setDay(key, mk(order[i + 1]));
+    }
+
+    // Scorre le date tra a (escluso) e b (incluso), nei due sensi.
+    function eachBetween(aKey, bKey, fn) {
+      const a = parseKey(aKey), b = parseKey(bKey);
+      if (!a || !b || aKey === bKey) return;
+      const dir = b.date > a.date ? 1 : -1;
+      let dt = a.date;
+      for (let i = 0; i < 400; i++) {
+        dt = addDays(dt, dir);
+        fn(keyOfDate(dt));
+        if (dt.getTime() === b.date.getTime()) break;
+      }
+    }
+
+    function skipReason(key, brush) {
+      const info = infoOfKey(key);
+      const why = info.holiday ? `${info.holiday} è festivo` : `${capFirst(WEEKDAYS[info.wd])} non è un giorno lavorativo`;
+      return `${why}: ${STATUS[brush].label} non applicato. Usa Lavoro o Smart Working per segnare un giorno extra.`;
+    }
+
+    function pressStart(key) {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      anchorKey = key;
+      setFocusKey(key);
+      const info = infoOfKey(key);
+      if (info.out) { toast(outMessage(key)); return; }
+      if (activeBrush === 'cycle') {
+        lastErase = false;
+        act(`Modifica ${shortDate(info)}`, () => cycleDay(key));
+        return;
+      }
+      const cur = days()[key] || null;
+      const erase = hasStatus(cur, activeBrush);
+      lastErase = erase;
+      drag = { brush: activeBrush, erase, first: key, last: key, changed: 0, skipped: 0 };
+      begin(`${STATUS[activeBrush].label} ${shortDate(info)}`);
+      tally(paintDay(key, activeBrush, erase, false), key);
+    }
+    function tally(r, key) {
+      if (!drag) return;
+      if (r === 'changed') drag.changed++;
+      else if (r === 'skip' || r === 'out') {
+        drag.skipped++;
+        if (drag.changed === 0 && drag.skipped === 1 && key === drag.first) toast(r === 'out' ? outMessage(key) : skipReason(key, drag.brush));
+      }
+    }
+    function dragMove(key) {
+      if (!drag || key === drag.last) return;
+      eachBetween(drag.last, key, k => tally(paintDay(k, drag.brush, drag.erase, true), k));
+      drag.last = key;
+    }
+    function endDrag() {
+      if (!drag) return;
+      const d = drag; drag = null;
+      const multi = d.first !== d.last;
+      if (txn && multi) txn.label = `${d.erase ? 'Rimossi ' : ''}${STATUS[d.brush].label}, ${d.changed} giorni`;
+      end();
+      if (multi && d.changed) {
+        toastUndo(`${d.erase ? 'Rimossi' : 'Applicati'} ${d.changed} giorni di ${STATUS[d.brush].label}${d.skipped ? ` (${d.skipped} non lavorativi saltati)` : ''}.`);
+      }
+    }
+    function tapDay(key) { pressStart(key); endDrag(); }
+
+    function rangeFromAnchor(key) {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      let brush = activeBrush, erase = lastErase;
+      if (brush === 'cycle') {
+        const a = days()[anchorKey];
+        if (!a) { toast('Scegli un timbro, oppure imposta prima uno stato sul giorno di partenza.'); return; }
+        brush = primaryOf(a); erase = false;
+      }
+      let changed = 0, skipped = 0;
+      const info = infoOfKey(key);
+      act(`${STATUS[brush].label} fino al ${shortDate(info)}`, () => {
+        eachBetween(anchorKey, key, k => {
+          const r = paintDay(k, brush, erase, true);
+          if (r === 'changed') changed++; else if (r === 'skip' || r === 'out') skipped++;
+        });
+      });
+      anchorKey = key;
+      setFocusKey(key);
+      if (changed) toastUndo(`${erase ? 'Rimossi' : 'Applicati'} ${changed} giorni di ${STATUS[brush].label}${skipped ? ` (${skipped} non lavorativi saltati)` : ''}.`);
+    }
+
+    /* Mouse e penna: pressione = applica, trascinamento = intervallo. */
+    let touch = null, lastLong = 0, swallowClick = false;
+    function cancelTouch() { if (touch) { clearTimeout(touch.timer); touch = null; } }
+
+    grid.addEventListener('pointerdown', e => {
+      const cell = cellOf(e.target);
+      if (!cell) return;
+      const key = cell.dataset.key;
+      if (e.pointerType === 'touch') {
+        cancelTouch();
+        touch = { id: e.pointerId, key, x: e.clientX, y: e.clientY, moved: false, long: false };
+        touch.timer = setTimeout(() => {
+          if (!touch) return;
+          touch.long = true; lastLong = Date.now(); swallowClick = true;
+          if (navigator.vibrate) navigator.vibrate(12);
+          openDetails(key);
+        }, 480);
+        return;
+      }
+      if (e.button !== 0) return;
+      if (e.shiftKey && anchorKey) { rangeFromAnchor(key); return; }
+      pressStart(key);
+    });
+    grid.addEventListener('pointermove', e => {
+      if (touch && e.pointerId === touch.id && !touch.moved && Math.hypot(e.clientX - touch.x, e.clientY - touch.y) > 10) {
+        touch.moved = true; clearTimeout(touch.timer);
+      }
+    });
+    grid.addEventListener('pointerover', e => {
+      if (!drag) return;
+      if (e.buttons === 0) { endDrag(); return; }                       // rilascio perso fuori dalla finestra
+      const c = cellOf(e.target);
+      if (c) dragMove(c.dataset.key);
+    });
+    window.addEventListener('pointerup', e => {
+      if (drag) endDrag();
+      if (touch && e.pointerId === touch.id) {
+        const t = touch; cancelTouch();
+        if (t.long) setTimeout(() => { swallowClick = false; }, 500);
+        else if (!t.moved) tapDay(t.key);
+      }
+    });
+    window.addEventListener('pointercancel', e => {
+      if (drag) endDrag();
+      if (touch && e.pointerId === touch.id) cancelTouch();
+    });
+    window.addEventListener('blur', () => { if (drag) endDrag(); cancelTouch(); });
+    // Dopo una pressione prolungata il dito, sollevandosi, genera un click su ciò che sta sotto:
+    // con il dialogo già aperto potrebbe premere "Svuota" o "Salva" per sbaglio. Lo scarto.
+    document.addEventListener('click', e => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+
+    /* Tastiera: Invio/Spazio su un bottone generano un click con detail = 0 */
+    grid.addEventListener('click', e => {
+      if (e.detail !== 0 || e.shiftKey) return;
+      const c = cellOf(e.target);
+      if (c) { setFocusKey(c.dataset.key); anchorKey = c.dataset.key; tapDay(c.dataset.key); }
+    });
+    grid.addEventListener('contextmenu', e => {
+      const c = cellOf(e.target);
+      if (!c) return;
+      e.preventDefault();
+      if (Date.now() - lastLong < 900) return;
+      openDetails(c.dataset.key);
+    });
+    grid.addEventListener('focusin', e => { const c = cellOf(e.target); if (c) setFocusKey(c.dataset.key); });
+
+    function moveFocus(date) {
+      const key = keyOfDate(date);
+      if (!cells.has(key)) { view = { y: date.getFullYear(), m: date.getMonth() }; focusKey = key; renderAll(); }
+      else setFocusKey(key);
+      const el = cells.get(key);
+      if (el) el.focus();
+    }
+    grid.addEventListener('keydown', e => {
+      const c = cellOf(e.target);
+      if (!c) return;
+      const key = c.dataset.key;
+      const p = parseKey(key);
+      let target = null;
+      switch (e.key) {
+        case 'ArrowLeft': target = addDays(p.date, -1); break;
+        case 'ArrowRight': target = addDays(p.date, 1); break;
+        case 'ArrowUp': target = addDays(p.date, -7); break;
+        case 'ArrowDown': target = addDays(p.date, 7); break;
+        case 'Home': target = addDays(p.date, -wdIdx(p.date)); break;
+        case 'End': target = addDays(p.date, 6 - wdIdx(p.date)); break;
+        case 'PageUp': { const m = p.m - 1; target = new Date(p.y, m, Math.min(p.d, daysIn(p.y, m))); break; }
+        case 'PageDown': { const m = p.m + 1; target = new Date(p.y, m, Math.min(p.d, daysIn(p.y, m))); break; }
+      }
+      if (target) { e.preventDefault(); moveFocus(target); return; }
+      if (e.key.toLowerCase() === 'e' || (e.key === 'Enter' && e.shiftKey)) { e.preventDefault(); openDetails(key); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (isAll()) { toast(readOnlyMessage()); return; }
+        act(`Svuota ${shortDate(infoOfKey(key))}`, () => setDay(key, null));
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.defaultPrevented) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const tag = (e.target.tagName || '').toLowerCase();
+      const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
+      const modal = !!document.querySelector('dialog[open]');
+      if (typing || modal) return;
+      if (mod && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (mod && !e.altKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+      if (mod || e.altKey) return;
+      if (e.key >= '1' && e.key <= '7') { if (!isAll()) setBrush(ORDER[+e.key - 1]); }
+      else if (e.key === '0' || e.key.toLowerCase() === 'c') { if (!isAll()) setBrush('cycle'); }
+      else if (e.key.toLowerCase() === 't') goToday();
+    });
+
+    /* =====================================================================
+       Dettagli del giorno: presenza e assenza insieme
+       ===================================================================== */
+    let detailKey = null, touchedP = false, touchedA = false;
+    const stdH = () => cfg().stdHours;
+    const defAbsHours = st => (st === 'permesso' ? Math.min(2, stdH()) : st === 'festivo' ? 0 : stdH());
+    const num = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
+
+    function setSelect(sel, options, value) {
+      sel.textContent = '';
+      sel.append(new Option('Nessuna', ''));
+      options.forEach(s => sel.append(new Option(STATUS[s].label, s)));
+      sel.value = value || '';
+    }
+    function lockHours() {
+      $('#dPresH').disabled = !$('#dPres').value;
+      $('#dAbsH').disabled = !$('#dAbs').value || $('#dAbs').value === 'festivo';
+    }
+    function balanceFromAbs() {
+      if (touchedP) return;
+      const st = $('#dAbs').value;
+      if (!st) return;
+      if (st === 'festivo') { $('#dPres').value = ''; $('#dPresH').value = ''; return; }
+      const rest = round2(Math.max(0, stdH() - num($('#dAbsH').value)));
+      if (rest > 0.001) { if (!$('#dPres').value) $('#dPres').value = 'work'; $('#dPresH').value = rest; }
+      else { $('#dPres').value = ''; $('#dPresH').value = ''; }
+    }
+    function balanceFromPres() {
+      if (touchedA) return;
+      const st = $('#dAbs').value;
+      if (!st || st === 'festivo') return;
+      $('#dAbsH').value = round2(Math.max(0, stdH() - num($('#dPresH').value)));
+    }
+    $('#dAbs').addEventListener('change', () => {
+      const st = $('#dAbs').value;
+      $('#dAbsH').value = st ? defAbsHours(st) : '';
+      touchedA = false;
+      balanceFromAbs();
+      lockHours();
+    });
+    $('#dPres').addEventListener('change', () => {
+      const st = $('#dPres').value;
+      if (st) {
+        const a = $('#dAbs').value;
+        const rest = a && a !== 'festivo' ? round2(Math.max(0, stdH() - num($('#dAbsH').value))) : stdH();
+        $('#dPresH').value = rest || stdH();
+        if (a === 'festivo') { $('#dAbs').value = ''; $('#dAbsH').value = ''; }
+      } else $('#dPresH').value = '';
+      touchedP = false;
+      lockHours();
+    });
+    $('#dPresH').addEventListener('input', () => { touchedP = true; balanceFromPres(); });
+    $('#dAbsH').addEventListener('input', () => { touchedA = true; balanceFromAbs(); });
+
+    function openDetails(key) {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      const info = infoOfKey(key);
+      if (!info) return;
+      if (info.out) { toast(outMessage(key)); return; }
+      closeMenus();
+      detailKey = key; touchedP = false; touchedA = false;
+      const cur = days()[key] || null;
+      const e = effective(key, info);
+      $('#dTitle').textContent = longDate(info);
+      const sub = [info.holiday ? `Festività: ${info.holiday}` : (!info.on ? 'Giorno non lavorativo' : ''), `Datore di lavoro: ${job().name}`].filter(Boolean).join('. ');
+      $('#dSub').textContent = sub;
+      const absOpts = info.workday ? ABSENCE.slice() : (info.holiday ? ['festivo'] : []);
+      if (e && e.absence && !absOpts.includes(e.absence.status)) absOpts.push(e.absence.status);
+      setSelect($('#dPres'), PRESENCE, e && e.presence ? e.presence.status : '');
+      setSelect($('#dAbs'), absOpts, e && e.absence ? e.absence.status : '');
+      $('#dPresH').value = e && e.presence ? e.presence.hours : '';
+      $('#dAbsH').value = e && e.absence && e.absence.status !== 'festivo' ? e.absence.hours : '';
+      $('#dNote').value = cur ? cur.note : '';
+      $('#dUntil').value = ''; $('#dUntil').min = key;
+      $('#dClear').hidden = !cur;
+      $('#dErr').hidden = true;
+      lockHours();
+      openDlg($('#dayDlg'));
+    }
+    $('#dCancel').addEventListener('click', () => $('#dayDlg').close());
+    $('#dClear').addEventListener('click', () => {
+      const key = detailKey;
+      act(`Svuota ${shortDate(infoOfKey(key))}`, () => setDay(key, null));
+      $('#dayDlg').close();
+    });
+    $('#dayForm').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const err = $('#dErr');
+      const fail = (msg, el) => { err.textContent = msg; err.hidden = false; if (el) el.focus(); };
+      const pst = $('#dPres').value, ast = $('#dAbs').value;
+      if (!pst && !ast) return fail('Scegli almeno una presenza o un’assenza. Per cancellare il giorno usa "Svuota giorno".', $('#dPres'));
+      const hrs = (id, st) => { const raw = $(id).value.trim(); return raw === '' ? (STATUS[st].layer === 'presence' ? stdH() : defAbsHours(st)) : Number(raw); };
+      const ph = pst ? hrs('#dPresH', pst) : 0;
+      const ah = ast && ast !== 'festivo' ? hrs('#dAbsH', ast) : 0;
+      if (!(ph >= 0 && ph <= 24) || !(ah >= 0 && ah <= 24)) return fail('Le ore devono essere un numero tra 0 e 24.', !(ph >= 0 && ph <= 24) ? $('#dPresH') : $('#dAbsH'));
+      if (ph + ah > 24) return fail('Presenza e assenza insieme superano le 24 ore.', $('#dPresH'));
+      if (ast === 'festivo' && pst) return fail('Il giorno festivo non si combina con lavoro o smart working. Togli la presenza, oppure scegli un’altra assenza.', $('#dAbs'));
+      const note = $('#dNote').value.trim().slice(0, 500);
+      const key = detailKey;
+      const info = infoOfKey(key);
+      const untilVal = $('#dUntil').value;
+      let until = null;
+      if (untilVal) {
+        const up = parseKey(untilVal);
+        if (!up || untilVal < key) return fail('La data finale deve essere uguale o successiva al giorno scelto.', $('#dUntil'));
+        if ((up.date - info.date) / 86400000 > 366) return fail('L’intervallo può durare al massimo un anno.', $('#dUntil'));
+        until = untilVal;
+      }
+      const mkEntry = () => ({ presence: pst ? { status: pst, hours: round2(ph) } : null, absence: ast ? { status: ast, hours: ast === 'festivo' ? 0 : round2(ah) } : null, note });
+      const label = [pst && STATUS[pst].label, ast && STATUS[ast].label].filter(Boolean).join(' e ');
+      let applied = 1, skipped = 0;
+      act(`${label} ${shortDate(info)}${until ? ' e seguenti' : ''}`, () => {
+        if (ast === 'festivo' && info.holiday && !note) setDay(key, null);
+        else setDay(key, mkEntry());
+        if (until) {
+          eachBetween(key, until, k => {
+            if (!infoOfKey(k).workday) { skipped++; return; }
+            setDay(k, mkEntry());
+            applied++;
+          });
+        }
+      });
+      $('#dayDlg').close();
+      if (until) toastUndo(`${label} applicato a ${applied} giorni${skipped ? ` (${skipped} non lavorativi saltati)` : ''}.`);
+    });
+
+    /* =====================================================================
+       Impostazioni del datore di lavoro selezionato
+       ===================================================================== */
+    (function buildSettingsFields() {
+      $('#sDays').innerHTML = WD_SHORT.map((n, i) => `<label><input type="checkbox" name="wd" value="${i}" /> ${n}</label>`).join('');
+      const sel = $('#sPatMonth');
+      sel.append(new Option('Nessuno', '0'));
+      MONTHS.forEach((m, i) => sel.append(new Option(capFirst(m), String(i + 1))));
+    })();
+    function toggleAccr() {
+      $('#sFerWorked').hidden = $('#sFerMode').value !== 'worked';
+      $('#sPerWorked').hidden = $('#sPerMode').value !== 'worked';
+    }
+    $('#sFerMode').addEventListener('change', toggleAccr);
+    $('#sPerMode').addEventListener('change', toggleAccr);
+
+    function openSettings(focusAccrual) {
+      if (isAll()) { toast('Scegli un datore di lavoro dal menu in alto per cambiarne le impostazioni.'); return; }
+      closeMenus();
+      const c = cfg(), p = store.settings.patron;
+      $('#sSub').textContent = `Valgono per ${job().name}.`;
+      $('#sStd').value = c.stdHours;
+      $$('#sDays input').forEach((cb, i) => { cb.checked = c.workdays[i]; });
+      $('#sCap').value = c.smartCap;
+      $('#sClosure').value = c.closureDeduct;
+      $('#sFerMode').value = c.accrual.ferie.mode; $('#sFerPer').value = c.accrual.ferie.per; $('#sFerEvery').value = c.accrual.ferie.every;
+      $('#sPerMode').value = c.accrual.permessi.mode; $('#sPerPer').value = c.accrual.permessi.per; $('#sPerEvery').value = c.accrual.permessi.every;
+      $('#sPatDay').value = p.month ? p.day : '';
+      $('#sPatMonth').value = String(p.month);
+      $('#sPatName').value = p.name;
+      $('#sErr').hidden = true;
+      if (focusAccrual === true) {
+        $('#sPerMode').value = 'worked';
+        if (!(Number($('#sPerPer').value) > 0)) $('#sPerPer').value = '';
+      }
+      toggleAccr();
+      openDlg($('#setDlg'));
+      if (focusAccrual === true) { $('#sPerPer').focus(); $('#sPerPer').scrollIntoView({ block: 'center' }); }
+    }
+    $('#settingsBtn').addEventListener('click', () => openSettings());
+    $('#sCancel').addEventListener('click', () => $('#setDlg').close());
+    $('#setForm').addEventListener('submit', ev => {
+      ev.preventDefault();
+      const err = $('#sErr');
+      const fail = (msg, el) => { err.textContent = msg; err.hidden = false; if (el) el.focus(); };
+      const std = Number($('#sStd').value);
+      if (!(std >= 1 && std <= 24)) return fail('Le ore di una giornata devono essere tra 1 e 24.', $('#sStd'));
+      const wd = $$('#sDays input').map(cb => cb.checked);
+      if (!wd.some(Boolean)) return fail('Seleziona almeno un giorno lavorativo.', $('#sDays input'));
+      const capRaw = $('#sCap').value.trim();
+      const cap = capRaw === '' ? 0 : Number(capRaw);
+      if (!Number.isInteger(cap) || cap < 0 || cap > 31) return fail('Il limite di smart working è un numero intero tra 0 e 31.', $('#sCap'));
+      const acc = (modeId, perId, everyId, label) => {
+        const mode = $(modeId).value;
+        const per = Number($(perId).value), every = Number($(everyId).value);
+        if (mode === 'worked' && !(per > 0 && per <= 1000 && every >= 1 && every <= 100000)) { fail(`Per la maturazione a ore di ${label} indica quanto matura (più di 0) e ogni quante ore lavorate (almeno 1).`, $(perId)); return null; }
+        return { mode, per: per >= 0 ? per : 0, every: every >= 1 ? every : 173 };
+      };
+      const fer = acc('#sFerMode', '#sFerPer', '#sFerEvery', 'ferie'); if (!fer) return;
+      const per = acc('#sPerMode', '#sPerPer', '#sPerEvery', 'permessi/ROL'); if (!per) return;
+      const pm = Number($('#sPatMonth').value), pdRaw = $('#sPatDay').value.trim();
+      let pd = 1;
+      if (pm > 0) {
+        pd = Number(pdRaw);
+        if (!Number.isInteger(pd) || pd < 1 || pd > daysIn(2024, pm - 1)) return fail(`Il giorno del santo patrono non è valido per ${MONTHS[pm - 1]}.`, $('#sPatDay'));
+      } else if (pdRaw || $('#sPatName').value.trim()) {
+        return fail('Per il santo patrono scegli anche il mese.', $('#sPatMonth'));
+      }
+      act('Modifica impostazioni', () => {
+        const c = cfg();
+        c.stdHours = std; c.workdays = wd; c.smartCap = cap; c.closureDeduct = $('#sClosure').value;
+        c.accrual = { ferie: fer, permessi: per };
+        store.settings.patron = { month: pm, day: pd, name: $('#sPatName').value.trim().slice(0, 40) };
+        holCache.clear();
+        txn.changed = true;
+      });
+      $('#setDlg').close();
+      renderAll();
+    });
+    $('#sWipe').addEventListener('click', async () => {
+      const choice = await askChoice({
+        title: 'Eliminare dei dati?',
+        text: `Puoi svuotare solo ${job().name} (giorni, note e monte ferie) oppure eliminare tutti i datori di lavoro e ripartire da zero. Subito dopo puoi annullare con Ctrl+Z, ma conviene salvare prima un backup.`,
+        choices: [
+          { label: 'Annulla', value: null, focus: true },
+          { label: 'Salva backup e continua', value: 'backup' },
+          { label: `Svuota solo ${job().name}`, value: 'job', kind: 'danger' },
+          { label: 'Elimina tutto', value: 'all', kind: 'danger' }
+        ]
+      });
+      if (!choice) return;
+      if (choice === 'backup') { exportJSON(); return; }
+      act(choice === 'job' ? `Svuota ${job().name}` : 'Elimina tutti i dati', () => {
+        if (choice === 'job') { const j = job(); j.days = {}; j.years = {}; j.snaps = {}; }
+        else {
+          const d = defaultDb();
+          store.jobs = d.jobs; store.activeJob = d.activeJob; store.lastJob = d.lastJob;
+          store.settings = { ...d.settings, theme: store.settings.theme };
+          syncActive();
+        }
+        holCache.clear();
+        txn.changed = true;
+      });
+      $('#setDlg').close();
+      renderAll();
+      toastUndo(choice === 'job' ? 'Dati del datore eliminati.' : 'Tutti i dati sono stati eliminati.');
+    });
+
+    /* Saldi: monte e riporto per anno */
+    ['qFerie', 'qCarryFerie', 'qPerm', 'qCarryPerm'].forEach(id => $('#' + id).addEventListener('change', () => {
+      if (isAll()) return;
+      const v = i => { const x = parseFloat($('#' + i).value); return Number.isFinite(x) && x >= 0 ? Math.min(x, 1000) : 0; };
+      const y = view.y;
+      act(`Monte e riporto ${y}`, () => {
+        years()[y] = { ferie: v('qFerie'), carryFerie: v('qCarryFerie'), permessi: v('qPerm'), carryPermessi: v('qCarryPerm') };
+        txn.changed = true;
+      });
+    }));
+
+    /* Maturazione: aggiorna e mostra quanto è maturato con le ore svolte */
+    function updateAccrual() {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      const y = view.y, b = balanceOf(y), c = cfg();
+      const prev = job().snaps[y];
+      const today = keyOfDate(new Date());
+      const msgs = [];
+      if (c.accrual.permessi.mode === 'worked') {
+        const d = prev ? b.acc.permessi - prev.permessi : null;
+        msgs.push(`Permessi maturati: ${fmt(b.acc.permessi)} h su ${fmt(b.ys.workedDone)} h lavorate${d != null ? ` (${d >= 0 ? '+' : ''}${fmt(d)} h dal ${fmtDate(prev.date)})` : ''}`);
+      }
+      if (c.accrual.ferie.mode === 'worked') {
+        const d = prev ? b.acc.ferie - prev.ferie : null;
+        msgs.push(`Ferie maturate: ${fmt(b.acc.ferie)} gg${d != null ? ` (${d >= 0 ? '+' : ''}${fmt(d)} gg dal ${fmtDate(prev.date)})` : ''}`);
+      }
+      if (!msgs.length) { toast('La maturazione a ore non è attiva: la attivi da Impostazioni.'); return; }
+      act('Aggiorna maturazione', () => {
+        job().snaps[y] = { date: today, ferie: b.acc.ferie || 0, permessi: b.acc.permessi || 0 };
+        txn.changed = true;
+      });
+      toast(msgs.join('. ') + '.', { label: 'Annulla', fn: undo });
+    }
+
+    /* =====================================================================
+       Rapporti di lavoro (datori di lavoro, inizio e fine)
+       ===================================================================== */
+    let jobsRemoved = new Set();
+    function jobBlock(j, isNew) {
+      const box = document.createElement('div');
+      box.className = 'jobbox';
+      box.dataset.id = j.id;
+      if (isNew) box.dataset.isnew = '1';
+      box.innerHTML = `<div class="jtop"><strong class="jlabel"></strong><button type="button" class="btn danger" data-del>Elimina</button></div>
+        <div class="row3j">
+          <div class="field"><label>Datore di lavoro<input type="text" data-f="name" maxlength="60" /></label></div>
+          <div class="field"><label>Inizio del rapporto<input type="date" data-f="start" /></label></div>
+          <div class="field"><label>Fine del rapporto<input type="date" data-f="end" /></label>
+            <label class="inline"><input type="checkbox" data-f="ongoing" /> In corso, senza fine prevista</label></div>
+        </div>
+        <p class="jsum"></p>`;
+      $('[data-f="name"]', box).value = j.name;
+      $('[data-f="start"]', box).value = j.start || '';
+      $('[data-f="end"]', box).value = j.end || '';
+      const ongoing = $('[data-f="ongoing"]', box), endEl = $('[data-f="end"]', box);
+      ongoing.checked = !j.end;
+      endEl.disabled = ongoing.checked;
+      ongoing.addEventListener('change', () => {
+        endEl.disabled = ongoing.checked;
+        if (!ongoing.checked) endEl.focus();
+      });
+      let sum = 'Nuovo rapporto: parte con le stesse impostazioni di quello selezionato.';
+      if (!isNew) {
+        const h = historyOf(j);
+        sum = `${Object.keys(j.days).length} giorni registrati, ${fmt(h.workedDone)} ore lavorate, ${fmt(h.days.ferie)} gg di ferie, ${fmt(h.permHours)} h di permesso.`;
+      }
+      $('.jsum', box).textContent = sum;
+      $('[data-del]', box).addEventListener('click', () => {
+        if ($$('#jobsList .jobbox').length <= 1) { $('#jErr').textContent = 'Serve almeno un rapporto di lavoro.'; $('#jErr').hidden = false; return; }
+        if (!isNew) jobsRemoved.add(j.id);
+        box.remove();
+        renumberJobs();
+      });
+      return box;
+    }
+    function renumberJobs() { $$('#jobsList .jobbox').forEach((b, i) => { $('.jlabel', b).textContent = `Rapporto ${i + 1}`; }); }
+    function openJobs() {
+      closeMenus();
+      jobsRemoved = new Set();
+      const list = $('#jobsList');
+      list.textContent = '';
+      store.jobs.forEach(j => list.append(jobBlock(j, false)));
+      renumberJobs();
+      $('#jErr').hidden = true;
+      openDlg($('#jobsDlg'));
+    }
+    $('#jobsBtn').addEventListener('click', openJobs);
+    $('#jCancel').addEventListener('click', () => $('#jobsDlg').close());
+    $('#jobAdd').addEventListener('click', () => {
+      const ends = $$('#jobsList .jobbox').filter(b => !$('[data-f="ongoing"]', b).checked).map(b => $('[data-f="end"]', b).value).filter(Boolean).sort();
+      const startDef = ends.length ? keyOfDate(addDays(parseKey(ends[ends.length - 1]).date, 1)) : keyOfDate(new Date());
+      const j = defaultJob('Nuovo datore di lavoro', startDef);
+      $('#jobsList').append(jobBlock(j, true));
+      renumberJobs();
+      const last = $$('#jobsList .jobbox').pop();
+      $('[data-f="name"]', last).focus(); $('[data-f="name"]', last).select();
+    });
+    $('#jobsForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const err = $('#jErr');
+      const fail = (msg, el) => { err.textContent = msg; err.hidden = false; if (el) el.focus(); };
+      const boxes = $$('#jobsList .jobbox');
+      const rows = [];
+      for (const b of boxes) {
+        const nameEl = $('[data-f="name"]', b), startEl = $('[data-f="start"]', b), endEl = $('[data-f="end"]', b);
+        const name = nameEl.value.trim();
+        if (!name) return fail('Scrivi il nome del datore di lavoro.', nameEl);
+        const ongoing = $('[data-f="ongoing"]', b).checked;
+        if (!ongoing && !endEl.value) return fail(`Per ${name} indica la data di fine, oppure spunta "In corso, senza fine prevista".`, endEl);
+        const start = startEl.value || null, end = ongoing ? null : endEl.value;
+        if ((start && !parseKey(start)) || (end && !parseKey(end))) return fail('Una delle date non è valida.', startEl);
+        if (start && end && end < start) return fail(`La fine del rapporto con ${name} è prima dell’inizio.`, endEl);
+        rows.push({ id: b.dataset.id, isNew: !!b.dataset.isnew, name: name.slice(0, 60), start, end });
+      }
+      if (!rows.length) return fail('Serve almeno un rapporto di lavoro.');
+      const removed = store.jobs.filter(j => !rows.some(r => r.id === j.id));
+      const withData = removed.filter(j => Object.keys(j.days).length);
+      if (withData.length) {
+        const ok = await askChoice({
+          title: 'Eliminare i rapporti rimossi?',
+          text: `${withData.map(j => `${j.name} (${Object.keys(j.days).length} giorni)`).join(', ')}: verranno eliminati con tutti i loro dati. Puoi annullare subito dopo, ma conviene prima salvare un backup.`,
+          choices: [{ label: 'Torna indietro', value: false, focus: true }, { label: 'Elimina', value: true, kind: 'danger' }]
+        });
+        if (!ok) return;
+      }
+      let outside = 0;
+      act('Rapporti di lavoro', () => {
+        const base = clone(cfg());
+        const next = rows.map(r => {
+          let j = store.jobs.find(x => x.id === r.id);
+          if (!j) { j = defaultJob(r.name, r.start); j.id = r.id; j.cfg = clone(base); }
+          j.name = r.name; j.start = r.start; j.end = r.end;
+          outside += Object.keys(j.days).filter(k => (j.start && k < j.start) || (j.end && k > j.end)).length;
+          return j;
+        });
+        next.sort((a, b) => ((a.start || '') < (b.start || '') ? -1 : (a.start || '') > (b.start || '') ? 1 : a.name.localeCompare(b.name)));
+        store.jobs = next;
+        if (store.activeJob !== ALL && !next.some(j => j.id === store.activeJob)) store.activeJob = next[0].id;
+        if (next.length < 2 && store.activeJob === ALL) store.activeJob = next[0].id;
+        syncActive();
+        txn.changed = true;
+      });
+      $('#jobsDlg').close();
+      clampViewToJob();
+      renderAll();
+      toastUndo(outside ? `Rapporti salvati. ${outside} giorni registrati ora cadono fuori periodo: restano salvati ma non contano.` : 'Rapporti di lavoro salvati.');
+    });
+
+    /* =====================================================================
+       Menu, azioni sul mese, importazione ed esportazione
+       ===================================================================== */
+    function closeMenus(except) { $$('.menu').forEach(m => { if (m !== except && m._close) m._close(false); }); }
+    $$('.menu').forEach(root => {
+      const btn = $('button[aria-haspopup]', root), pop = $('.menu-pop', root);
+      const close = refocus => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); if (refocus) btn.focus(); };
+      root._close = close;
+      btn.addEventListener('click', () => {
+        if (!pop.hidden) { close(false); return; }
+        closeMenus(root);
+        pop.hidden = false; btn.setAttribute('aria-expanded', 'true');
+        const first = $('button:not(:disabled)', pop); if (first) first.focus();
+      });
+      pop.addEventListener('keydown', e => {
+        const items = $$('button:not(:disabled)', pop), i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(true); }
+        else if (e.key === 'Tab') close(false);
+      });
+      pop.addEventListener('click', e => { if (e.target.closest('button')) close(false); });
+    });
+    document.addEventListener('click', e => { $$('.menu').forEach(m => { if (!m.contains(e.target) && m._close) m._close(false); }); });
+
+    function fillMonth(status) {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      const { y, m } = view;
+      let n = 0;
+      const changed = act(`Compila ${MONTHS[m]} con ${STATUS[status].label}`, () => {
+        for (let d = 1; d <= daysIn(y, m); d++) {
+          const k = keyOf(y, m, d);
+          if (infoOf(y, m, d).workday && !days()[k]) { setDay(k, applyStatus(null, status)); n++; }
+        }
+      });
+      if (changed) toastUndo(`${n} giorni compilati con ${STATUS[status].label}.`);
+      else toast('Non ci sono giorni lavorativi vuoti in questo mese.');
+    }
+    async function clearMonth() {
+      if (isAll()) { toast(readOnlyMessage()); return; }
+      const { y, m } = view;
+      const prefix = `${y}-${pad(m + 1)}-`;
+      const keys = Object.keys(days()).filter(k => k.startsWith(prefix));
+      if (!keys.length) { toast('Questo mese è già vuoto.'); return; }
+      const ok = await askChoice({
+        title: `Svuotare ${MONTHS[m]} ${y}?`,
+        text: `Verranno rimossi ${keys.length} giorni con stati, ore e note di ${job().name}. Puoi annullare subito dopo.`,
+        choices: [{ label: 'Annulla', value: false, focus: true }, { label: 'Svuota il mese', value: true, kind: 'danger' }]
+      });
+      if (!ok) return;
+      act(`Svuota ${MONTHS[m]} ${y}`, () => keys.forEach(k => setDay(k, null)));
+      toastUndo(`${keys.length} giorni rimossi.`);
+    }
+
+    function download(name, content, type) {
+      const url = URL.createObjectURL(new Blob([content], { type }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+    const csvText = v => { let t = String(v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+    const csvNum = n => String(round2(n)).replace('.', ',');
+    const downloadCSV = (name, lines) => download(name, '\uFEFF' + lines.join('\r\n') + '\r\n', 'text/csv;charset=utf-8');
+    const jobSuffix = () => (store.jobs.length > 1 ? `-${slug(job().name)}` : '');
+    const partLabel = p => (p ? STATUS[p.status].label : '');
+    const partHours = p => (p && p.status !== 'festivo' ? csvNum(p.hours) : '');
+
+    // Solo i giorni che hanno uno stato inserito (datore selezionato)
+    function exportCSV() {
+      if (isAll()) { toast('Scegli un datore di lavoro per questo export, oppure usa "Esporta storico di tutti i datori".'); return; }
+      const y = view.y;
+      const keys = Object.keys(days()).filter(k => k.startsWith(`${y}-`)).sort();
+      if (!keys.length) { toast(`Nessun giorno registrato nel ${y}.`); return; }
+      const lines = ['Data;Giorno;Presenza;Ore presenza;Assenza;Ore assenza;Note'];
+      for (const k of keys) {
+        const i = infoOfKey(k), e = days()[k];
+        lines.push([fmtDate(k), WEEKDAYS[i.wd], partLabel(e.presence), partHours(e.presence), partLabel(e.absence), partHours(e.absence), csvText(e.note)].join(';'));
+      }
+      downloadCSV(`presenze-${y}${jobSuffix()}.csv`, lines);
+      toast(`Esportati ${keys.length} giorni del ${y}.`);
+    }
+
+    // Tutti i giorni dell'anno (anche vuoti, weekend, festivi, fuori rapporto) più riepilogo e saldi in coda
+    function exportYearFull() {
+      if (isAll()) { toast('Scegli un datore di lavoro per questo export, oppure usa "Esporta storico di tutti i datori".'); return; }
+      const y = view.y, std = cfg().stdHours, c = cfg();
+      const lines = ['Data;Giorno;Tipo giorno;Compilato;Presenza;Ore presenza;Assenza;Ore assenza;Giorni assenza;Conteggiata;Festività;Note'];
+      let n = 0;
+      for (let dt = new Date(y, 0, 1); dt.getFullYear() === y; dt = addDays(dt, 1)) {
+        const key = keyOfDate(dt);
+        const i = infoOf(y, dt.getMonth(), dt.getDate());
+        const cur = days()[key];
+        const e = effective(key, i);
+        const tipo = i.out ? 'Fuori rapporto' : i.holiday ? 'Festivo' : (i.on ? 'Lavorativo' : 'Non lavorativo');
+        const compilato = i.out ? '' : (i.workday ? (cur ? 'Sì' : 'No') : '');
+        let giorni = '', cont = '';
+        if (e && e.absence) {
+          const a = e.absence;
+          const counted = a.status === 'festivo' ? i.on : i.workday;
+          cont = counted ? 'Sì' : 'No';
+          if (counted && a.status !== 'permesso') giorni = a.status === 'festivo' ? '1' : csvNum(std > 0 ? Math.min(1, a.hours / std) : 0);
+        }
+        lines.push([fmtDate(key), WEEKDAYS[i.wd], tipo, compilato, partLabel(e && e.presence), partHours(e && e.presence),
+          partLabel(e && e.absence), e && !e.auto ? partHours(e.absence) : '', giorni, cont, csvText(i.out ? '' : (i.holiday || '')), csvText(cur ? cur.note : '')].join(';'));
+        n++;
+      }
+      const b = balanceOf(y);
+      const ys = b.ys;
+      const sum = (label, val) => `${csvText(label)};${val}`;
+      lines.push('', sum(`Riepilogo ${y}, ${job().name}`, ''));
+      lines.push(sum('Lavoro (giorni)', csvNum(ys.days.work)), sum('Smart Working (giorni)', csvNum(ys.days.smart)),
+        sum('Ferie (giorni)', csvNum(ys.days.ferie)), sum('Permesso/ROL (ore)', csvNum(ys.permHours)),
+        sum('Malattia (giorni)', csvNum(ys.days.malattia)), sum('Chiusura aziendale (giorni)', csvNum(ys.days.chiusura)),
+        sum('Festivo (giorni)', csvNum(ys.days.festivo)),
+        sum('Ore lavorate (comprese quelle pianificate)', csvNum(ys.worked)), sum('Ore lavorate fino a oggi', csvNum(ys.workedDone)),
+        sum('Di cui straordinario (ore)', csvNum(ys.overtime)),
+        sum('Giorni lavorativi non compilati fino a oggi', String(ys.gaps)));
+      lines.push('', sum('Saldi (comprese le assenze già pianificate)', ''),
+        sum(b.ferie.worked ? 'Ferie: riporto più maturato (giorni)' : 'Ferie: monte più riporto (giorni)', csvNum(b.ferie.avail)),
+        sum('Ferie: già godute (giorni)', csvNum(b.ferie.done)),
+        sum('Ferie: pianificate (giorni)', csvNum(b.ferie.plan)),
+        sum('Ferie: residuo (giorni)', csvNum(b.ferie.avail - b.ferie.done - b.ferie.plan)),
+        sum(b.perm.worked ? 'Permessi/ROL: riporto più maturato (ore)' : 'Permessi/ROL: monte più riporto (ore)', csvNum(b.perm.avail)),
+        sum('Permessi/ROL: già usati (ore)', csvNum(b.perm.done)),
+        sum('Permessi/ROL: pianificati (ore)', csvNum(b.perm.plan)),
+        sum('Permessi/ROL: residuo (ore)', csvNum(b.perm.avail - b.perm.done - b.perm.plan)));
+      if (c.closureDeduct !== 'none') lines.push(sum(`Le chiusure aziendali scalano da ${c.closureDeduct === 'ferie' ? 'ferie' : 'permessi/ROL'}`, ''));
+      downloadCSV(`presenze-${y}${jobSuffix()}-anno-completo.csv`, lines);
+      toast(`Esportati tutti i ${n} giorni del ${y}, con riepilogo e saldi.`);
+    }
+
+    // Storico di tutti i datori di lavoro: un elenco giorno per giorno e un riepilogo per anno
+    function jobYears(j) {
+      return withJob(j, () => {
+        const keys = Object.keys(days()).sort();
+        const thisY = new Date().getFullYear();
+        const first = j.start ? +j.start.slice(0, 4) : (keys.length ? +keys[0].slice(0, 4) : thisY);
+        const last = j.end ? +j.end.slice(0, 4) : Math.max(thisY, keys.length ? +keys[keys.length - 1].slice(0, 4) : 0);
+        const out = [];
+        for (let y = Math.max(first, last - 60); y <= last; y++) out.push(y);
+        return out;
+      });
+    }
+    function exportHistory() {
+      const lines = ['Datore;Inizio rapporto;Fine rapporto;Data;Giorno;Presenza;Ore presenza;Assenza;Ore assenza;Note'];
+      let n = 0;
+      for (const j of store.jobs) {
+        withJob(j, () => {
+          Object.keys(days()).sort().forEach(k => {
+            const i = infoOfKey(k), e = days()[k];
+            lines.push([csvText(j.name), fmtDate(j.start || ''), fmtDate(j.end || ''), fmtDate(k), WEEKDAYS[i.wd], partLabel(e.presence), partHours(e.presence), partLabel(e.absence), partHours(e.absence), csvText(e.note)].join(';'));
+            n++;
+          });
+        });
+      }
+      const head = 'Datore;Anno;Ore lavorate;Giorni di lavoro;Giorni di smart working;Giorni di ferie;Ore di permesso/ROL;Giorni di malattia;Giorni di chiusura;Ore di straordinario';
+      const row = (name, label, s) => [csvText(name), csvText(label), csvNum(s.workedDone), csvNum(s.days.work), csvNum(s.days.smart), csvNum(s.days.ferie), csvNum(s.permHours), csvNum(s.days.malattia), csvNum(s.days.chiusura), csvNum(s.overtime)].join(';');
+      lines.push('', head);
+      const grand = blankStats();
+      for (const j of store.jobs) {
+        const tot = blankStats();
+        jobYears(j).forEach(y => {
+          const s = withJob(j, () => periodStats(y, null));
+          addStats(tot, s);
+          if (s.worked || s.permHours || s.days.ferie || s.days.malattia || s.days.chiusura) lines.push(row(j.name, String(y), s));
+        });
+        lines.push(row(j.name, 'Totale', tot));
+        addStats(grand, tot);
+      }
+      lines.push(row('Tutti i datori', 'Totale', grand));
+      downloadCSV('presenze-storico-completo.csv', lines);
+      toast(`Storico esportato: ${store.jobs.length} datori, ${n} giorni registrati, riepilogo per anno in coda.`);
+    }
+
+    // JSON: uno per datore di lavoro, oppure il backup completo
+    const jobFileName = (j, i) => `presenze-${slug(j.name)}${store.jobs.filter(x => slug(x.name) === slug(j.name)).length > 1 ? `-${i + 1}` : ''}-${keyOfDate(new Date())}.json`;
+    const jobPayload = j => ({ app: 'presenze-ferie', kind: 'job', version: 3, exportedAt: new Date().toISOString(), settings: store.settings, job: j });
+    function exportJobJSON() {
+      if (isAll()) { toast('Scegli un datore di lavoro dal menu in alto, oppure salva un JSON per ogni datore.'); return; }
+      const j = job();
+      download(jobFileName(j, store.jobs.indexOf(j)), JSON.stringify(jobPayload(j), null, 2), 'application/json');
+      toast(`File JSON di ${j.name} scaricato.`);
+    }
+    function exportEachJSON() {
+      store.meta.lastBackup = new Date().toISOString();
+      persist();
+      store.jobs.forEach((j, i) => setTimeout(() => download(jobFileName(j, i), JSON.stringify(jobPayload(j), null, 2), 'application/json'), i * 400));
+      renderBackupInfo();
+      toast(`Scaricati ${store.jobs.length} file JSON, uno per datore di lavoro. Se il browser chiede di consentire più download, accetta.`);
+    }
+    function exportJSON() {
+      store.meta.lastBackup = new Date().toISOString();
+      persist();
+      download(`presenze-backup-${keyOfDate(new Date())}.json`, JSON.stringify({ app: 'presenze-ferie', kind: 'all', ...store }, null, 2), 'application/json');
+      renderBackupInfo();
+      toast('Backup completo scaricato.');
+    }
+
+    function mergeJobInto(target, inc, replace, legacy) {
+      if (replace) {
+        target.days = inc.days; target.years = inc.years; target.snaps = inc.snaps; target.cfg = inc.cfg;
+        if (!legacy) { target.name = inc.name; target.start = inc.start; target.end = inc.end; }
+      } else {
+        Object.assign(target.days, inc.days); Object.assign(target.years, inc.years); Object.assign(target.snaps, inc.snaps);
+      }
+    }
+    $('#importFile').addEventListener('change', async ev => {
+      const files = Array.from(ev.target.files);
+      ev.target.value = '';                                             // permette di scegliere lo stesso file due volte
+      if (!files.length) return;
+      const parsed = [], bad = [];
+      for (const f of files) {
+        if (f.size > 5 * 1024 * 1024) { bad.push(f.name); continue; }
+        try { parsed.push({ name: f.name, ...normalizeAny(JSON.parse(await f.text())) }); } catch (e) { bad.push(f.name); }
+      }
+      if (!parsed.length) { toast(`Nessun file valido tra quelli scelti${bad.length ? ` (${bad.join(', ')})` : ''}. I tuoi dati non sono stati toccati.`); return; }
+      const count = parsed.reduce((s, p) => s + p.db.jobs.reduce((t, j) => t + Object.keys(j.days).length, 0), 0);
+      const desc = parsed.map(p => `${p.name}: ${p.db.jobs.map(j => `${j.name} (${Object.keys(j.days).length} giorni)`).join(', ')}`).join('. ');
+      const choice = await askChoice({
+        title: 'Ripristinare i backup?',
+        text: `${desc}.${bad.length ? ` File ignorati perché non validi: ${bad.join(', ')}.` : ''} "Unisci" aggiunge i giorni ai tuoi: se la data c'è già vince il backup, e un datore nuovo diventa un nuovo rapporto. "Sostituisci" sovrascrive i datori già presenti.`,
+        choices: [
+          { label: 'Annulla', value: null, focus: true },
+          { label: 'Unisci', value: 'merge' },
+          { label: 'Sostituisci', value: 'replace', kind: 'danger' }
+        ]
+      });
+      if (!choice) return;
+      const replace = choice === 'replace';
+      act('Ripristino backup', () => {
+        for (const p of parsed) {
+          if (p.kind === 'legacy') { mergeJobInto(isAll() ? active : job(), p.db.jobs[0], replace, true); continue; }
+          if (p.kind === 'all' && replace && parsed.length === 1) {
+            store.jobs = p.db.jobs; store.activeJob = p.db.activeJob; store.lastJob = p.db.lastJob;
+            store.settings = { ...p.db.settings, theme: store.settings.theme };
+            continue;
+          }
+          for (const inc of p.db.jobs) {
+            const ex = store.jobs.find(j => j.id === inc.id);
+            if (ex) mergeJobInto(ex, inc, replace, false); else store.jobs.push(inc);
+          }
+        }
+        syncActive();
+        holCache.clear();
+        txn.changed = true;
+      });
+      clampViewToJob();
+      renderAll();
+      toastUndo(`Backup ripristinato (${count} giorni da ${parsed.length} file).`);
+    });
+
+    document.addEventListener('click', e => {
+      const b = e.target.closest('[data-act]');
+      if (!b || b.disabled) return;
+      switch (b.dataset.act) {
+        case 'fill-work': fillMonth('work'); break;
+        case 'fill-smart': fillMonth('smart'); break;
+        case 'clear-month': clearMonth(); break;
+        case 'export-year': exportYearFull(); break;
+        case 'export-csv': exportCSV(); break;
+        case 'export-history': exportHistory(); break;
+        case 'export-json-job': exportJobJSON(); break;
+        case 'export-json-each': exportEachJSON(); break;
+        case 'export-json': exportJSON(); break;
+        case 'import-json': $('#importFile').click(); break;
+        case 'update-accrual': updateAccrual(); break;
+        case 'setup-accrual': openSettings(true); break;
+        case 'print': setTimeout(() => window.print(), 60); break;
+        case 'goto': goTo(b.dataset.key); break;
+      }
+    });
+
+    window.addEventListener('beforeprint', () => {
+      document.documentElement.dataset.theme = 'light';
+      const t = new Date();
+      $('#printStamp').textContent = `Stampato il ${pad(t.getDate())}/${pad(t.getMonth() + 1)}/${t.getFullYear()}. ${isAll() ? 'Tutti i datori di lavoro' : `Datore di lavoro: ${job().name}`}.`;
+    });
+    window.addEventListener('afterprint', applyTheme);
+
+    /* Dialoghi: chiusura cliccando sullo sfondo */
+    $$('dialog').forEach(dlg => dlg.addEventListener('click', e => {
+      if (e.target !== dlg || Date.now() - (dlg._openedAt || 0) < 700) return;
+      const r = dlg.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
+    }));
+
+    /* Sincronizzazione tra schede e cambio di giorno a schermata aperta */
+    window.addEventListener('storage', ev => {
+      if (ev.key !== KEY || ev.newValue == null) return;
+      try {
+        store = normalizeAny(JSON.parse(ev.newValue)).db;
+        syncActive();
+        holCache.clear(); undoStack = []; redoStack = [];
+        renderAll();
+        toast('Dati aggiornati da un’altra scheda del browser.');
+      } catch (e) { /* ignoro scritture non valide */ }
+    });
+    function checkRollover() {
+      const t = keyOfDate(new Date());
+      if (t !== lastTodayKey) { lastTodayKey = t; renderAll(); }
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkRollover(); });
+    window.addEventListener('focus', checkRollover);
+
+    /* =====================================================================
+       Avvio
+       ===================================================================== */
+    store = loadStore();
+    syncActive();
+    if (startNotice) persist();
+    $('#legend').innerHTML = ORDER.map(k => `<span class="st-${k}"><i class="sw"></i>${esc(STATUS[k].label)}</span>`).join('') +
+      '<span><i class="sw off"></i>Non lavorativo</span><span><i class="sw out"></i>Fuori rapporto</span><span><i class="sw gap"></i>Da compilare</span>';
+    buildTray();
+    focusKey = keyOfDate(new Date());
+    clampViewToJob();
+    renderAll();
+    if (startNotice) toast(startNotice);
+  })();
+  </script>
+
+</body>
+</html>

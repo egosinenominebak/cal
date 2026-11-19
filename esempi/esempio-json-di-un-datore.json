@@ -1,0 +1,346 @@
+{
+  "app": "presenze-ferie",
+  "kind": "job",
+  "version": 3,
+  "exportedAt": "2026-11-18T09:00:00.653Z",
+  "settings": {
+    "theme": "auto"
+  },
+  "job": {
+    "id": "b",
+    "name": "Bianchi Software",
+    "start": "2026-10-12",
+    "end": null,
+    "cfg": {
+      "stdHours": 8,
+      "workdays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "smartWeekly": 2,
+      "smartDeadlines": [
+        "05-31",
+        "12-31"
+      ],
+      "patron": {
+        "month": 12,
+        "day": 7,
+        "name": "S. Ambrogio"
+      },
+      "closureDeduct": "exfest",
+      "accrual": {
+        "ferie": {
+          "mode": "worked",
+          "per": 8,
+          "every": 173,
+          "unit": "h"
+        },
+        "permessi": {
+          "mode": "worked",
+          "per": 4,
+          "every": 173,
+          "unit": "h"
+        },
+        "exfest": {
+          "mode": "worked",
+          "per": 2,
+          "every": 173,
+          "unit": "h"
+        }
+      }
+    },
+    "days": {
+      "2026-10-12": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-13": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-14": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-15": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-16": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-19": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-20": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-21": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-22": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-23": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-26": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-27": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-28": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-29": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-10-30": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-02": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-03": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-04": {
+        "presence": {
+          "status": "work",
+          "hours": 4
+        },
+        "absence": {
+          "status": "ferie",
+          "hours": 4
+        },
+        "note": "Mezza giornata"
+      },
+      "2026-11-06": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-09": {
+        "presence": {
+          "status": "work",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-10": {
+        "presence": {
+          "status": "work",
+          "hours": 6
+        },
+        "absence": {
+          "status": "permesso",
+          "hours": 2
+        },
+        "note": "Visita medica"
+      },
+      "2026-11-11": {
+        "presence": {
+          "status": "work",
+          "hours": 6
+        },
+        "absence": {
+          "status": "exfest",
+          "hours": 2
+        },
+        "note": ""
+      },
+      "2026-11-13": {
+        "presence": {
+          "status": "smart",
+          "hours": 5
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-16": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-14": {
+        "presence": {
+          "status": "work",
+          "hours": 5
+        },
+        "absence": null,
+        "note": "Reperibilità"
+      },
+      "2026-11-19": {
+        "presence": {
+          "status": "smart",
+          "hours": 6
+        },
+        "absence": {
+          "status": "permesso",
+          "hours": 2
+        },
+        "note": ""
+      },
+      "2026-11-23": {
+        "presence": null,
+        "absence": {
+          "status": "ferie",
+          "hours": 8
+        },
+        "note": ""
+      },
+      "2026-12-24": {
+        "presence": null,
+        "absence": {
+          "status": "chiusura",
+          "hours": 8
+        },
+        "note": "Chiusura natalizia"
+      },
+      "2026-12-28": {
+        "presence": null,
+        "absence": {
+          "status": "chiusura",
+          "hours": 8
+        },
+        "note": ""
+      },
+      "2026-12-29": {
+        "presence": null,
+        "absence": {
+          "status": "chiusura",
+          "hours": 8
+        },
+        "note": ""
+      },
+      "2026-11-17": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      },
+      "2026-11-18": {
+        "presence": {
+          "status": "smart",
+          "hours": 8
+        },
+        "absence": null,
+        "note": ""
+      }
+    },
+    "years": {
+      "2026": {
+        "ferie": 0,
+        "permessi": 0,
+        "exfest": 0,
+        "carryFerie": 0,
+        "carryPermessi": 0,
+        "carryExfest": 0
+      }
+    },
+    "snaps": {
+      "2026": {
+        "date": "2026-11-10",
+        "ferie": 1.5,
+        "permessi": 3.1,
+        "exfest": 1.6
+      }
+    }
+  }
+}

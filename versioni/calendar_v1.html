@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro Presenze & Ferie</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+
+      --c-work: #2563eb;
+      --c-smart: #06b6d4;
+      --c-ferie: #f59e0b;
+      --c-permesso: #a855f7;
+      --c-malattia: #ef4444;
+      --c-festivo: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      background: var(--surface);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .title-group h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .title-group p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: var(--surface-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    button:hover {
+      background: #475569;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: #2563eb;
+    }
+
+    /* Selettore Pennello */
+    .brush-bar {
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      background: var(--surface);
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .brush-bar span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-right: 6px;
+    }
+
+    .brush-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      border: 2px solid transparent;
+    }
+
+    .brush-btn.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Calendario */
+    .calendar-card {
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .cal-header h2 {
+      font-size: 1.25rem;
+      text-transform: capitalize;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .day-cell {
+      aspect-ratio: 1 / 0.92;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: transform 0.1s, border-color 0.15s;
+      user-select: none;
+    }
+
+    .day-cell:hover {
+      border-color: #94a3b8;
+      transform: translateY(-1px);
+    }
+
+    .day-cell.empty {
+      background: transparent;
+      border: none;
+      cursor: default;
+    }
+
+    .day-cell.empty:hover {
+      transform: none;
+    }
+
+    .day-cell.weekend {
+      background: rgba(15, 23, 42, 0.45);
+      color: var(--text-muted);
+    }
+
+    .day-cell.today {
+      box-shadow: inset 0 0 0 2px #38bdf8;
+    }
+
+    .day-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .day-num {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .note-indicator {
+      font-size: 0.75rem;
+      opacity: 0.9;
+    }
+
+    .day-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 6px;
+      border-radius: 6px;
+      text-align: center;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Sidebar Statistiche */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 18px;
+    }
+
+    .stat-card h3 {
+      font-size: 1rem;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .stat-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-val {
+      font-weight: 700;
+    }
+
+    .quota-input {
+      width: 65px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 6px;
+      border-radius: 6px;
+      text-align: right;
+      font-size: 0.85rem;
+    }
+
+    .residuo-box {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .residuo-box strong {
+      color: #38bdf8;
+      font-size: 0.95rem;
+    }
+
+    /* Modal Note / Ore */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .modal h3 {
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>📅 Registro Presenze & Ferie</h1>
+      <p>Click sinistro: applica/cicla stato • Click destro: note e ore</p>
+    </div>
+    <div class="controls">
+      <button onclick="fillWeekdaysWork()">Compila Lavoro Mese</button>
+      <button onclick="exportCSV()">Esporta CSV</button>
+      <button onclick="exportJSON()">Backup JSON</button>
+      <button onclick="document.getElementById('importFile').click()">Ripristina JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)" />
+    </div>
+  </header>
+
+  <div class="brush-bar" id="brushBar">
+    <span>Modalità Click:</span>
+    <!-- Popolato via JS -->
+  </div>
+
+  <div class="container">
+    <div class="calendar-card">
+      <div class="cal-header">
+        <button onclick="changeMonth(-1)">◀ Mese Prec.</button>
+        <h2 id="monthTitle">Mese Anno</h2>
+        <button onclick="todayMonth()">Oggi</button>
+        <button onclick="changeMonth(1)">Mese Succ. ▶</button>
+      </div>
+
+      <div class="weekdays">
+        <div>Lun</div>
+        <div>Mar</div>
+        <div>Mer</div>
+        <div>Gio</div>
+        <div>Ven</div>
+        <div>Sab</div>
+        <div>Dom</div>
+      </div>
+
+      <div class="days-grid" id="daysGrid"></div>
+    </div>
+
+    <div class="sidebar">
+      <div class="stat-card">
+        <h3>📊 Riepilogo Mese Corrente</h3>
+        <div id="monthStats"></div>
+      </div>
+
+      <div class="stat-card">
+        <h3>🗓️ Riepilogo Annuale (<span id="yearLabel"></span>)</h3>
+        <div id="yearStats"></div>
+
+        <div class="residuo-box">
+          <div class="stat-row">
+            <span>Monte Ferie (giorni):</span>
+            <input type="number" step="0.5" id="quotaFerie" class="quota-input" onchange="saveQuotas()" />
+          </div>
+          <div class="stat-row">
+            <span>Ferie Residue:</span>
+            <strong id="residuoFerie">0 gg</strong>
+          </div>
+
+          <div class="stat-row" style="margin-top:10px;">
+            <span>Monte Permessi/ROL (ore):</span>
+            <input type="number" step="0.5" id="quotaPermessi" class="quota-input" onchange="saveQuotas()" />
+          </div>
+          <div class="stat-row">
+            <span>Permessi Residui:</span>
+            <strong id="residuoPermessi">0 h</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dettaglio Giorno -->
+  <div class="modal-backdrop" id="dayModal">
+    <div class="modal">
+      <h3 id="modalDateTitle">Dettaglio Giorno</h3>
+      <div class="form-group">
+        <label>Stato Giornata</label>
+        <select id="modalStatus"></select>
+      </div>
+      <div class="form-group">
+        <label>Ore (es. 8 per giornata intera, 2 per permesso parziale)</label>
+        <input type="number" step="0.5" min="0" max="24" id="modalHours" />
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="modalNote" rows="3" placeholder="Es. Permesso visita medica, straordinario..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button onclick="clearDayFromModal()" style="margin-right:auto; color:#ef4444;">Svuota</button>
+        <button onclick="closeModal()">Annulla</button>
+        <button class="primary" onclick="saveModal()">Salva</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STATUSES = {
+      work:     { label: 'Lavoro',        color: 'var(--c-work)',     defaultHours: 8 },
+      smart:    { label: 'Smart Working', color: 'var(--c-smart)',    defaultHours: 8 },
+      ferie:    { label: 'Ferie',         color: 'var(--c-ferie)',    defaultHours: 8 },
+      permesso: { label: 'Permesso/ROL',  color: 'var(--c-permesso)', defaultHours: 2 },
+      malattia: { label: 'Malattia',      color: 'var(--c-malattia)', defaultHours: 8 },
+      festivo:  { label: 'Festivo',       color: 'var(--c-festivo)',  defaultHours: 0 }
+    };
+
+    const STATUS_KEYS = Object.keys(STATUSES);
+    const STORAGE_KEY = 'presenze_tracker_v1';
+
+    let currentDate = new Date();
+    let activeBrush = 'cycle'; // 'cycle' oppure una chiave di STATUSES
+    let selectedDateKey = null;
+
+    let store = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+      days: {},
+      quotas: { ferie: 26, permessi: 32 }
+    };
+
+    function saveStore() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    }
+
+    function initBrushBar() {
+      const bar = document.getElementById('brushBar');
+      let html = `<span>Modalità Click:</span>`;
+      html += `<button class="brush-btn ${activeBrush === 'cycle' ? 'active' : ''}" onclick="setBrush('cycle')">🔄 Cicla stati</button>`;
+      for (const [key, info] of Object.entries(STATUSES)) {
+        html += `
+          <button class="brush-btn ${activeBrush === key ? 'active' : ''}" onclick="setBrush('${key}')">
+            <span class="dot" style="background:${info.color}"></span>
+            ${info.label}
+          </button>`;
+      }
+      bar.innerHTML = html;
+    }
+
+    function setBrush(mode) {
+      activeBrush = mode;
+      initBrushBar();
+    }
+
+    function formatDateKey(year, month, day) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      const monthName = currentDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+      document.getElementById('monthTitle').textContent = monthName;
+      document.getElementById('yearLabel').textContent = year;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const totalDays = lastDay.getDate();
+
+      // Lunedì = 0 ... Domenica = 6
+      let startWeekday = firstDay.getDay() - 1;
+      if (startWeekday < 0) startWeekday = 6;
+
+      const grid = document.getElementById('daysGrid');
+      grid.innerHTML = '';
+
+      const todayStr = formatDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+      for (let i = 0; i < startWeekday; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'day-cell empty';
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= totalDays; d++) {
+        const dateObj = new Date(year, month, d);
+        const weekday = dateObj.getDay();
+        const isWeekend = (weekday === 0 || weekday === 6);
+        const key = formatDateKey(year, month, d);
+        const entry = store.days[key];
+
+        const cell = document.createElement('div');
+        cell.className = 'day-cell' + (isWeekend ? ' weekend' : '') + (key === todayStr ? ' today' : '');
+
+        let badgeHtml = '';
+        if (entry && STATUSES[entry.status]) {
+          const st = STATUSES[entry.status];
+          const hourLabel = (entry.status === 'permesso' && entry.hours) ? ` (${entry.hours}h)` : '';
+          badgeHtml = `<div class="day-badge" style="background:${st.color}">${st.label}${hourLabel}</div>`;
+        }
+
+        const noteIcon = (entry && entry.note) ? `<span class="note-indicator" title="${entry.note}">📝</span>` : '';
+
+        cell.innerHTML = `
+          <div class="day-top">
+            <span class="day-num">${d}</span>
+            ${noteIcon}
+          </div>
+          ${badgeHtml}
+        `;
+
+        cell.onclick = () => handleDayClick(key);
+        cell.oncontextmenu = (e) => {
+          e.preventDefault();
+          openModal(key);
+        };
+
+        grid.appendChild(cell);
+      }
+
+      renderStats();
+    }
+
+    function handleDayClick(key) {
+      const current = store.days[key];
+
+      if (activeBrush === 'cycle') {
+        if (!current) {
+          store.days[key] = { status: STATUS_KEYS[0], hours: STATUSES[STATUS_KEYS[0]].defaultHours, note: '' };
+        } else {
+          const idx = STATUS_KEYS.indexOf(current.status);
+          if (idx === -1 || idx === STATUS_KEYS.length - 1) {
+            delete store.days[key];
+          } else {
+            const nextKey = STATUS_KEYS[idx + 1];
+            store.days[key] = { ...current, status: nextKey, hours: STATUSES[nextKey].defaultHours };
+          }
+        }
+      } else {
+        if (current && current.status === activeBrush) {
+          delete store.days[key];
+        } else {
+          store.days[key] = {
+            status: activeBrush,
+            hours: STATUSES[activeBrush].defaultHours,
+            note: current ? current.note : ''
+          };
+        }
+      }
+
+      saveStore();
+      renderCalendar();
+    }
+
+    function renderStats() {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const monthPrefix = `${year}-${month}-`;
+      const yearPrefix = `${year}-`;
+
+      const monthCounts = {};
+      const yearCounts = {};
+      let yearPermessiHours = 0;
+
+      STATUS_KEYS.forEach(k => {
+        monthCounts[k] = 0;
+        yearCounts[k] = 0;
+      });
+
+      for (const [dateKey, entry] of Object.entries(store.days)) {
+        if (!STATUSES[entry.status]) continue;
+        if (dateKey.startsWith(monthPrefix)) {
+          monthCounts[entry.status]++;
+        }
+        if (dateKey.startsWith(yearPrefix)) {
+          yearCounts[entry.status]++;
+          if (entry.status === 'permesso') {
+            yearPermessiHours += Number(entry.hours || 0);
+          }
+        }
+      }
+
+      document.getElementById('monthStats').innerHTML = STATUS_KEYS.map(k => `
+        <div class="stat-row">
+          <span class="stat-label"><span class="dot" style="background:${STATUSES[k].color}"></span>${STATUSES[k].label}</span>
+          <span class="stat-val">${monthCounts[k]} gg</span>
+        </div>
+      `).join('');
+
+      document.getElementById('yearStats').innerHTML = STATUS_KEYS.map(k => `
+        <div class="stat-row">
+          <span class="stat-label"><span class="dot" style="background:${STATUSES[k].color}"></span>${STATUSES[k].label}</span>
+          <span class="stat-val">${yearCounts[k]} gg ${k === 'permesso' ? `(${yearPermessiHours}h)` : ''}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('quotaFerie').value = store.quotas.ferie;
+      document.getElementById('quotaPermessi').value = store.quotas.permessi;
+
+      const resFerie = (store.quotas.ferie - yearCounts.ferie).toFixed(1).replace('.0', '');
+      const resPermessi = (store.quotas.permessi - yearPermessiHours).toFixed(1).replace('.0', '');
+
+      document.getElementById('residuoFerie').textContent = `${resFerie} gg`;
+      document.getElementById('residuoPermessi').textContent = `${resPermessi} h`;
+    }
+
+    function saveQuotas() {
+      store.quotas.ferie = parseFloat(document.getElementById('quotaFerie').value) || 0;
+      store.quotas.permessi = parseFloat(document.getElementById('quotaPermessi').value) || 0;
+      saveStore();
+      renderStats();
+    }
+
+    function changeMonth(delta) {
+      currentDate.setMonth(currentDate.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function todayMonth() {
+      currentDate = new Date();
+      renderCalendar();
+    }
+
+    function fillWeekdaysWork() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+
+      for (let d = 1; d <= totalDays; d++) {
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = dateObj.getDay();
+        const key = formatDateKey(year, month, d);
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !store.days[key]) {
+          store.days[key] = { status: 'work', hours: 8, note: '' };
+        }
+      }
+      saveStore();
+      renderCalendar();
+    }
+
+    // Modal gestione
+    function openModal(key) {
+      selectedDateKey = key;
+      const entry = store.days[key] || { status: 'work', hours: 8, note: '' };
+      document.getElementById('modalDateTitle').textContent = `Giorno: ${key}`;
+
+      const select = document.getElementById('modalStatus');
+      select.innerHTML = STATUS_KEYS.map(k => `<option value="${k}" ${entry.status === k ? 'selected' : ''}>${STATUSES[k].label}</option>`).join('');
+
+      document.getElementById('modalHours').value = entry.hours ?? STATUSES[entry.status].defaultHours;
+      document.getElementById('modalNote').value = entry.note || '';
+
+      document.getElementById('dayModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('dayModal').classList.remove('open');
+      selectedDateKey = null;
+    }
+
+    function saveModal() {
+      if (!selectedDateKey) return;
+      const status = document.getElementById('modalStatus').value;
+      const hours = parseFloat(document.getElementById('modalHours').value) || 0;
+      const note = document.getElementById('modalNote').value.trim();
+
+      store.days[selectedDateKey] = { status, hours, note };
+      saveStore();
+      closeModal();
+      renderCalendar();
+    }
+
+    function clearDayFromModal() {
+      if (!selectedDateKey) return;
+      delete store.days[selectedDateKey];
+      saveStore();
+      closeModal();
+      renderCalendar();
+    }
+
+    // Export / Import
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presenze-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && parsed.days) {
+            store = parsed;
+            saveStore();
+            renderCalendar();
+            alert('Backup ripristinato con successo!');
+          }
+        } catch (err) {
+          alert('File JSON non valido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportCSV() {
+      let csv = 'Data;Stato;Ore;Note\n';
+      const sortedKeys = Object.keys(store.days).sort();
+      for (const k of sortedKeys) {
+        const entry = store.days[k];
+        const label = STATUSES[entry.status]?.label || entry.status;
+        const note = (entry.note || '').replace(/;/g, ',').replace(/\n/g, ' ');
+        csv += `${k};${label};${entry.hours || 0};${note}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presenze-${currentDate.getFullYear()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Init
+    initBrushBar();
+    renderCalendar();
+  </script>
+</body>
+</html>
